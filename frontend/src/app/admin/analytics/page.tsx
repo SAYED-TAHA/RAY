@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, PieChart, TrendingUp, TrendingDown, Users,
   ShoppingCart, DollarSign, Package, Eye, Download,
@@ -8,16 +8,76 @@ import {
   Activity, Target, Zap, Award
 } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAnalytics, fetchDashboardOverview, AnalyticsData, DashboardOverview } from '../../../services/analyticsService';
 
 export default function AdminAnalytics() {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [selectedMetric, setSelectedMetric] = useState('revenue');
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardOverview | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const stats = {
-    revenue: { current: 2456789, previous: 1987654, change: 23.7 },
-    users: { current: 15234, previous: 13456, change: 13.2 },
-    orders: { current: 45678, previous: 39876, change: 14.6 },
-    products: { current: 8923, previous: 8234, change: 8.4 }
+  // Load analytics data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [analytics, dashboard] = await Promise.all([
+          fetchAnalytics(selectedPeriod),
+          fetchDashboardOverview()
+        ]);
+        setAnalyticsData(analytics);
+        setDashboardData(dashboard);
+      } catch (error) {
+        console.error('Failed to load analytics:', error);
+        alert('فشل تحميل بيانات التحليلات. يرجى المحاولة مرة أخرى.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [selectedPeriod]);
+
+  // Refresh data
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+      const [analytics, dashboard] = await Promise.all([
+        fetchAnalytics(selectedPeriod),
+        fetchDashboardOverview()
+      ]);
+      setAnalyticsData(analytics);
+      setDashboardData(dashboard);
+    } catch (error) {
+      console.error('Failed to refresh analytics:', error);
+      alert('فشل تحديث بيانات التحليلات. يرجى المحاولة مرة أخرى.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ray-blue"></div>
+        <span className="mr-3 text-gray-600">جاري تحميل بيانات التحليلات...</span>
+      </div>
+    );
+  }
+
+  // Use dashboard data for stats
+  const stats = dashboardData ? {
+    revenue: dashboardData.overview.revenue,
+    orders: dashboardData.overview.orders,
+    products: {
+      current: dashboardData.overview.products.total,
+      previous: Math.round(dashboardData.overview.products.total * 0.9),
+      change: 10.0
+    }
+  } : {
+    revenue: { current: 0, previous: 0, change: 0 },
+    orders: { current: 0, previous: 0, change: 0 },
+    products: { current: 0, previous: 0, change: 0 }
   };
 
   return (

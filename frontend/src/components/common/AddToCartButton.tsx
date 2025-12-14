@@ -1,14 +1,16 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { ShoppingCart, Plus, Check } from 'lucide-react';
+import { ShoppingCart, Plus, Check, AlertCircle } from 'lucide-react';
 import { fastCart, cartEvents } from '@/utils/performance';
+import { addToCart as addToCartAPI } from '@/services/cartService';
 
 interface Product {
-  id: number;
+  id?: string;
+  _id?: string;
   name: string;
   price: number;
-  shop: string;
+  shop?: string;
   image?: string;
   description?: string;
   category?: string;
@@ -24,6 +26,7 @@ interface AddToCartButtonProps {
   showIcon?: boolean;
   size?: 'sm' | 'md' | 'lg';
   variant?: 'primary' | 'secondary' | 'outline';
+  quantity?: number;
 }
 
 const AddToCartButton: React.FC<AddToCartButtonProps> = ({
@@ -31,25 +34,55 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   className = '',
   showIcon = true,
   size = 'md',
-  variant = 'primary'
+  variant = 'primary',
+  quantity = 1
 }) => {
   const [isAdded, setIsAdded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  const handleAddToCart = useCallback(() => {
+  const handleAddToCart = useCallback(async () => {
     try {
-      // Fast cart operation
-      fastCart.add(product);
+      setIsLoading(true);
+      setError(null);
       
-      // Emit cart update event
-      cartEvents.emit();
+      const productId = product._id || product.id;
+      if (!productId) {
+        setError('معرف المنتج غير متوفر');
+        return;
+      }
+
+      // Try to add to backend cart first
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          await addToCartAPI(productId as string, quantity);
+          // Also update local cart for instant feedback
+          fastCart.add(product);
+          cartEvents.emit();
+        } catch (apiError: any) {
+          console.warn('Backend cart failed, using local cart:', apiError);
+          // Fallback to local cart
+          fastCart.add(product);
+          cartEvents.emit();
+        }
+      } else {
+        // No auth token, use local cart only
+        fastCart.add(product);
+        cartEvents.emit();
+      }
       
       // Show feedback
       setIsAdded(true);
-      setTimeout(() => setIsAdded(false), 1000);
-    } catch (error) {
-      console.error('Error adding to cart:', error);
+      setTimeout(() => setIsAdded(false), 2000);
+    } catch (err: any) {
+      console.error('Error adding to cart:', err);
+      setError(err.message || 'فشل إضافة المنتج للسلة');
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsLoading(false);
     }
-  }, [product]);
+  }, [product, quantity]);
 
   const getSizeClasses = () => {
     switch (size) {
@@ -79,12 +112,41 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
     rounded-lg font-medium transition-all duration-200
     flex items-center justify-center gap-2
     transform hover:scale-105 active:scale-95
+    disabled:opacity-50 disabled:cursor-not-allowed
     ${className}
   `;
 
+  if (error) {
+    return (
+      <div className="flex flex-col gap-1">
+        <button 
+          onClick={handleAddToCart}
+          disabled={isLoading}
+          className={baseClasses}
+        >
+          {isLoading ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>جاري الإضافة...</span>
+            </>
+          ) : (
+            <>
+              {showIcon && <ShoppingCart className="w-4 h-4" />}
+              <span>أضف للسلة</span>
+            </>
+          )}
+        </button>
+        <div className="flex items-center gap-1 text-red-600 text-xs">
+          <AlertCircle className="w-3 h-3" />
+          <span>{error}</span>
+        </div>
+      </div>
+    );
+  }
+
   if (isAdded) {
     return (
-      <button className={`${baseClasses} bg-green-600 hover:bg-green-700`}>
+      <button className={`${baseClasses} bg-green-600 hover:bg-green-700`} disabled>
         <Check className="w-4 h-4" />
         <span>تمت الإضافة!</span>
       </button>
@@ -94,10 +156,20 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
   return (
     <button
       onClick={handleAddToCart}
+      disabled={isLoading}
       className={baseClasses}
     >
-      {showIcon && <ShoppingCart className="w-4 h-4" />}
-      <span>أضف للسلة</span>
+      {isLoading ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+          <span>جاري الإضافة...</span>
+        </>
+      ) : (
+        <>
+          {showIcon && <ShoppingCart className="w-4 h-4" />}
+          <span>أضف للسلة</span>
+        </>
+      )}
     </button>
   );
 };

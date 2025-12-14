@@ -35,56 +35,58 @@ passport.use(
   )
 );
 
-// Google OAuth Strategy
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback',
-      scope: ['profile', 'email'],
-      passReqToCallback: true
-    },
-    async (req, accessToken, refreshToken, profile, done) => {
-      try {
-        // Check if user already exists
-        let user = await User.findByGoogleId(profile.id);
-        
-        if (user) {
-          // User exists, update last login
-          await user.updateLastLogin();
-          return done(null, user);
-        }
-        
-        // Check if user exists with same email
-        user = await User.findByEmail(profile.emails[0].value);
-        
-        if (user) {
-          // Link Google account to existing user
-          user.googleId = profile.id;
-          user.isEmailVerified = true;
-          if (!user.avatar) {
-            user.avatar = profile.photos[0].value;
+// Google OAuth Strategy (only if credentials are provided)
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:5000/api/auth/google/callback',
+        scope: ['profile', 'email'],
+        passReqToCallback: true
+      },
+      async (req, accessToken, refreshToken, profile, done) => {
+        try {
+          // Check if user already exists
+          let user = await User.findByGoogleId(profile.id);
+          
+          if (user) {
+            // User exists, update last login
+            await user.updateLastLogin();
+            return done(null, user);
           }
-          await user.save();
-          return done(null, user);
+          
+          // Check if user exists with same email
+          user = await User.findByEmail(profile.emails[0].value);
+          
+          if (user) {
+            // Link Google account to existing user
+            user.googleId = profile.id;
+            user.isEmailVerified = true;
+            if (!user.avatar) {
+              user.avatar = profile.photos[0].value;
+            }
+            await user.save();
+            return done(null, user);
+          }
+          
+          // Create new user from Google profile
+          const newUser = await User.createGoogleUser({
+            id: profile.id,
+            email: profile.emails[0].value,
+            name: profile.displayName,
+            picture: profile.photos[0].value
+          });
+          
+          return done(null, newUser);
+        } catch (error) {
+          return done(error, null);
         }
-        
-        // Create new user from Google profile
-        const newUser = await User.createGoogleUser({
-          id: profile.id,
-          email: profile.emails[0].value,
-          name: profile.displayName,
-          picture: profile.photos[0].value
-        });
-        
-        return done(null, newUser);
-      } catch (error) {
-        return done(error, null);
       }
-    }
-  )
-);
+    )
+  );
+}
 
 // Serialize user for session
 passport.serializeUser((user, done) => {

@@ -15,6 +15,7 @@ dotenv.config({ path: path.join(__dirname, '.env.local') });
 import connectDB from './config/mongodb.js';
 import passport from './config/passport.js';
 import productRoutes from './api/routes/products.js';
+import searchRoutes from './api/routes/search.js';
 import storefrontRoutes from './api/routes/storefront.js';
 import offersRoutes from './api/routes/offers.js';
 import adminRoutes from './api/routes/admin.js';
@@ -22,6 +23,10 @@ import profileRoutes from './api/routes/profile.js';
 import jobsRoutes from './api/routes/jobs.js';
 import merchantsRoutes from './api/routes/merchants.js';
 import ordersRoutes from './api/routes/orders.js';
+import analyticsRoutes from './api/routes/analytics.js';
+import usersRoutes from './api/routes/users.js';
+import systemRoutes from './api/routes/system.js';
+import auditRoutes from './api/routes/audit.js';
 import cartRoutes from './api/routes/cart.js';
 import authRoutes from './api/routes/auth.js';
 
@@ -30,7 +35,23 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      process.env.CORS_ORIGIN
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else if (origin && origin.includes('127.0.0.1')) {
+      // Allow all 127.0.0.1 origins (browser preview proxy)
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -46,6 +67,7 @@ connectDB();
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/search', searchRoutes);
 app.use('/api/storefront', storefrontRoutes);
 app.use('/api/offers', offersRoutes);
 app.use('/api/admin', adminRoutes);
@@ -53,6 +75,10 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/jobs', jobsRoutes);
 app.use('/api/merchants', merchantsRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/system', systemRoutes);
+app.use('/api/audit', auditRoutes);
 app.use('/api/cart', cartRoutes);
 
 // Health Check

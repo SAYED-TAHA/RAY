@@ -9,7 +9,8 @@ const getRandomPrice = (min, max) => Math.floor(Math.random() * (max - min + 1))
 // Generate dynamic offers from merchants data
 const allOffers = Object.values(merchantsData).map(merchant => {
   const price = getRandomPrice(50, 500);
-  const oldPrice = price * (1 + Math.random() * 0.5 + 0.2).toFixed(2); // 20-70% higher
+  const multiplier = 1 + Math.random() * 0.5 + 0.2; // 20-70% higher
+  const oldPrice = price * multiplier;
   const discount = Math.round(((oldPrice - price) / oldPrice) * 100);
 
   return {
