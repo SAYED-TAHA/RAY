@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Type, Save } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSettings, updateAdminSettings } from '../../../services/adminSettingsService';
 
 export default function AdminTypography() {
   const [fonts, setFonts] = useState({
@@ -13,7 +14,51 @@ export default function AdminTypography() {
     letterSpacing: 0
   });
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const fontOptions = ['Cairo', 'Tajawal', 'Almarai', 'Droid Arabic Kufi', 'Droid Arabic Naskh', 'Lato', 'Roboto'];
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const settings = await fetchAdminSettings();
+        const typography = settings?.ui?.typography;
+        if (typography) {
+          setFonts((prev) => ({
+            ...prev,
+            ...typography
+          }));
+        }
+      } catch (e: any) {
+        console.error('Failed to load admin settings:', e);
+        setError(e?.message || 'فشل تحميل الإعدادات');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      await updateAdminSettings({
+        ui: {
+          typography: { ...fonts }
+        }
+      } as any);
+    } catch (e: any) {
+      console.error('Failed to update admin settings:', e);
+      setError(e?.message || 'فشل حفظ الإعدادات');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -29,15 +74,26 @@ export default function AdminTypography() {
                 <p className="text-sm text-gray-600">تخصيص الخطوط والطباعة</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <button
+              onClick={handleSave}
+              disabled={loading || saving}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
+            >
               <Save className="w-4 h-4" />
-              حفظ
+              {saving ? 'جاري الحفظ...' : 'حفظ'}
             </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>
+        )}
+
+        {loading ? (
+          <div className="text-gray-600">جاري تحميل الإعدادات...</div>
+        ) : (
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200">
             <h2 className="text-lg font-bold text-gray-900 mb-6">الخطوط</h2>
@@ -90,6 +146,7 @@ export default function AdminTypography() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

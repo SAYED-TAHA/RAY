@@ -1,25 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { HelpCircle, Search, Plus, Edit, Trash2, Eye, MessageSquare, FileText, Calendar, User, CheckCircle, Clock } from 'lucide-react';
+import { HelpCircle, Search, Plus, FileText, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminHelp() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const faqs = [
-    { id: 1, category: 'عام', question: 'كيفية إضافة منتج جديد؟', answer: 'اذهب إلى قسم المنتجات وانقر على إضافة منتج جديد', views: 234, helpful: 189 },
-    { id: 2, category: 'عام', question: 'كيفية إدارة المستخدمين؟', answer: 'استخدم قسم المستخدمين لإضافة أو حذف المستخدمين', views: 156, helpful: 142 },
-    { id: 3, category: 'تقني', question: 'كيفية استكشاف الأخطاء؟', answer: 'تحقق من سجل الأخطاء في قسم النظام', views: 89, helpful: 76 },
-    { id: 4, category: 'مالي', question: 'كيفية عرض التقارير المالية؟', answer: 'اذهب إلى قسم الإيرادات والمصروفات', views: 123, helpful: 110 }
-  ];
-
-  const supportTickets = [
-    { id: 'TIC001', title: 'مشكلة في الدفع', status: 'open', priority: 'high', createdAt: '2025-12-05', replies: 3 },
-    { id: 'TIC002', title: 'استفسار عن الميزات', status: 'closed', priority: 'low', createdAt: '2025-12-04', replies: 5 },
-    { id: 'TIC003', title: 'خطأ في التقرير', status: 'pending', priority: 'medium', createdAt: '2025-12-03', replies: 1 }
-  ];
+  const faqs: any[] = [];
+  const supportTickets: any[] = [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -35,7 +24,7 @@ export default function AdminHelp() {
                 <p className="text-sm text-gray-600">إدارة الأسئلة الشائعة وتذاكر الدعم</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <button disabled className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60">
               <Plus className="w-4 h-4" />
               سؤال جديد
             </button>
@@ -81,31 +70,43 @@ export default function AdminHelp() {
               <Search className="absolute right-3 top-3 w-5 h-5 text-gray-400" />
               <input type="text" placeholder="بحث..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg" />
             </div>
-            <div className="space-y-3">
-              {faqs.map(faq => (
-                <div key={faq.id} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition">
-                  <h3 className="font-medium text-gray-900">{faq.question}</h3>
-                  <p className="text-xs text-gray-600 mt-1">{faq.views} مشاهدة • {faq.helpful} مفيد</p>
-                </div>
-              ))}
-            </div>
+            {faqs.length === 0 ? (
+              <div className="p-8 text-center text-gray-600 bg-gray-50 rounded-lg border border-gray-200">
+                لا توجد أسئلة شائعة حالياً. سيتم تفعيل إدارة الأسئلة الشائعة عند ربط نظام المساعدة بقاعدة البيانات.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {faqs.map((faq: any) => (
+                  <div key={faq.id} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition">
+                    <h3 className="font-medium text-gray-900">{faq.question}</h3>
+                    <p className="text-xs text-gray-600 mt-1">{faq.views} مشاهدة • {faq.helpful} مفيد</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">تذاكر الدعم</h2>
-            <div className="space-y-3">
-              {supportTickets.map(ticket => (
-                <div key={ticket.id} className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">{ticket.title}</h3>
-                    <p className="text-xs text-gray-600">{ticket.id} • {ticket.replies} ردود</p>
+            {supportTickets.length === 0 ? (
+              <div className="p-8 text-center text-gray-600 bg-gray-50 rounded-lg border border-gray-200">
+                لا توجد تذاكر دعم حالياً. سيتم إظهار التذاكر عند ربط نظام الدعم.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {supportTickets.map((ticket: any) => (
+                  <div key={ticket.id} className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium text-gray-900">{ticket.title}</h3>
+                      <p className="text-xs text-gray-600">{ticket.id} • {ticket.replies} ردود</p>
+                    </div>
+                    <span className={`px-2 py-1 text-xs rounded-full ${ticket.status === 'open' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
+                      {ticket.status === 'open' ? 'مفتوح' : 'مغلق'}
+                    </span>
                   </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${ticket.status === 'open' ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
-                    {ticket.status === 'open' ? 'مفتوح' : 'مغلق'}
-                  </span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

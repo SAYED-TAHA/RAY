@@ -1,19 +1,114 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Receipt, Plus, Download, Eye, Trash2, Search } from 'lucide-react';
 import Link from 'next/link';
+import { fetchOrders } from '../../../services/ordersService';
 
 export default function AdminInvoices() {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const invoices = [
-    { id: 'INV001', customer: 'أحمد محمد', amount: 5000, status: 'paid', date: '2025-12-05', dueDate: '2025-12-10' },
-    { id: 'INV002', customer: 'سارة أحمد', amount: 3500, status: 'pending', date: '2025-12-04', dueDate: '2025-12-11' },
-    { id: 'INV003', customer: 'محمد علي', amount: 7200, status: 'overdue', date: '2025-11-25', dueDate: '2025-12-02' },
-    { id: 'INV004', customer: 'فاطمة حسن', amount: 2800, status: 'paid', date: '2025-12-03', dueDate: '2025-12-08' },
-    { id: 'INV005', customer: 'خالد محمود', amount: 4500, status: 'pending', date: '2025-12-05', dueDate: '2025-12-12' }
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<any[]>([]);
+
+  const loadInvoices = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchOrders({ limit: 500 });
+      const orders = data.orders;
+
+      const mapped = orders.map((order: any) => {
+        const createdAt = order.createdAt ? new Date(order.createdAt) : new Date();
+        const date = createdAt.toISOString().split('T')[0];
+        const paymentStatus = order.payment?.status;
+        const status = paymentStatus === 'paid' ? 'paid' : paymentStatus === 'pending' ? 'pending' : 'overdue';
+
+        return {
+          id: `INV${String(order.id || order._id || '').slice(-3) || '000'}`,
+          customer: order.customer?.name || order.customerId || order.userId || 'مستخدم',
+          amount: order.pricing?.total || 0,
+          status,
+          date
+        };
+      });
+
+      setInvoices(mapped);
+    } catch (e: any) {
+      console.error('Failed to load invoices:', e);
+      setError(e?.message || 'فشل تحميل الفواتير');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInvoices();
+  }, []);
+
+  const filteredInvoices = invoices.filter((invoice) => {
+    const q = searchTerm.trim();
+    if (!q) return true;
+    return String(invoice.id).includes(q) || String(invoice.customer).includes(q);
+  });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-4">
+                <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-lg transition">
+                  <Receipt className="w-6 h-6 text-gray-600" />
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">الفواتير</h1>
+                  <p className="text-sm text-gray-600">إدارة الفواتير والمستندات</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل الفواتير...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-4">
+                <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-lg transition">
+                  <Receipt className="w-6 h-6 text-gray-600" />
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">الفواتير</h1>
+                  <p className="text-sm text-gray-600">إدارة الفواتير والمستندات</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <button onClick={loadInvoices} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+              إعادة المحاولة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -29,7 +124,7 @@ export default function AdminInvoices() {
                 <p className="text-sm text-gray-600">إدارة الفواتير والمستندات</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <button disabled className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
               <Plus className="w-4 h-4" />
               فاتورة جديدة
             </button>
@@ -61,7 +156,14 @@ export default function AdminInvoices() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {invoices.map(invoice => (
+                {filteredInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-gray-600">
+                      لا توجد فواتير
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInvoices.map((invoice) => (
                   <tr key={invoice.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{invoice.id}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-gray-900">{invoice.customer}</td>
@@ -78,13 +180,14 @@ export default function AdminInvoices() {
                     <td className="px-6 py-4 whitespace-nowrap text-gray-600">{invoice.date}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex gap-2">
-                        <button className="text-blue-600 hover:text-blue-900"><Eye className="w-4 h-4" /></button>
-                        <button className="text-green-600 hover:text-green-900"><Download className="w-4 h-4" /></button>
-                        <button className="text-red-600 hover:text-red-900"><Trash2 className="w-4 h-4" /></button>
+                        <button disabled className="text-blue-600 opacity-60 cursor-not-allowed"><Eye className="w-4 h-4" /></button>
+                        <button disabled className="text-green-600 opacity-60 cursor-not-allowed"><Download className="w-4 h-4" /></button>
+                        <button disabled className="text-red-600 opacity-60 cursor-not-allowed"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>

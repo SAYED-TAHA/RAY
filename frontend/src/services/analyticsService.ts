@@ -5,6 +5,20 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+const getAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const storedTokens = localStorage.getItem('authTokens');
+  if (storedTokens) {
+    try {
+      const parsed = JSON.parse(storedTokens);
+      if (parsed?.accessToken) return parsed.accessToken;
+    } catch {
+      // ignore
+    }
+  }
+  return localStorage.getItem('authToken');
+};
+
 export interface AnalyticsSummary {
   totalOrders: number;
   totalRevenue: number;
@@ -94,7 +108,7 @@ export const fetchAnalytics = async (period: string = 'month', startDate?: strin
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
 
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     
     if (token) {
@@ -121,7 +135,7 @@ export const fetchAnalytics = async (period: string = 'month', startDate?: strin
  */
 export const fetchDashboardOverview = async (): Promise<DashboardOverview> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     
     if (token) {
@@ -157,7 +171,7 @@ export const fetchSalesReport = async (
     if (endDate) params.append('endDate', endDate);
     params.append('groupBy', groupBy);
 
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     
     if (token) {

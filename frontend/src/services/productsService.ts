@@ -5,6 +5,20 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+const getAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const storedTokens = localStorage.getItem('authTokens');
+  if (storedTokens) {
+    try {
+      const parsed = JSON.parse(storedTokens);
+      if (parsed?.accessToken) return parsed.accessToken;
+    } catch {
+      // ignore
+    }
+  }
+  return localStorage.getItem('authToken');
+};
+
 export interface Product {
   _id: string;
   name: string;
@@ -71,7 +85,7 @@ export const fetchProduct = async (id: string): Promise<Product | null> => {
  */
 export const createProduct = async (product: Omit<Product, '_id' | 'createdAt' | 'updatedAt'>): Promise<Product | null> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     
     if (token) {
@@ -101,7 +115,7 @@ export const createProduct = async (product: Omit<Product, '_id' | 'createdAt' |
  */
 export const updateProduct = async (id: string, product: Partial<Product>): Promise<Product | null> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     
     if (token) {
@@ -131,7 +145,7 @@ export const updateProduct = async (id: string, product: Partial<Product>): Prom
  */
 export const deleteProduct = async (id: string): Promise<boolean> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     
     if (token) {

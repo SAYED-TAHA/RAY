@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Globe, Users, ShoppingCart, Package, TrendingUp, DollarSign,
   Activity, Shield, Settings, BarChart3, PieChart, Clock,
@@ -12,59 +12,133 @@ import {
   Bell, Bookmark, HelpCircle, LogOut, Settings2, Image as ImageIcon
 } from 'lucide-react';
 import Link from 'next/link';
+import { fetchGlobalStats, GlobalStats } from '../../../services/centralHubService';
+import { fetchSystemHealth, SystemHealth } from '../../../services/systemService';
+import { fetchAuditLogs } from '../../../services/auditService';
+import { fetchAdminMessages } from '../../../services/adminMessagesService';
+import { fetchAdminNotifications } from '../../../services/adminNotificationsService';
+import { fetchConversions } from '../../../services/adminFinanceService';
+
+interface RecentActivityItem {
+  id: string;
+  action: string;
+  details: string;
+  time: string;
+  icon: any;
+  color: string;
+}
 
 export default function AdminCentralHub() {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const globalStats = {
-    totalUsers: 15234,
-    activeUsers: 8456,
-    totalOrders: 45678,
-    pendingOrders: 234,
-    totalRevenue: 2456789,
-    growth: 23.7,
-    systemUptime: '99.9%',
-    serverLoad: '45%',
-    storageUsed: '67%',
-    databaseConnections: 127,
-    apiRequests: 1234567,
-    errorRate: '0.1%',
-    responseTime: '245ms'
+  const [globalStats, setGlobalStats] = useState<GlobalStats | null>(null);
+  const [systemHealthData, setSystemHealthData] = useState<SystemHealth | null>(null);
+  const [recentActivities, setRecentActivities] = useState<RecentActivityItem[]>([]);
+  const [messagesCount, setMessagesCount] = useState(0);
+  const [notificationsCount, setNotificationsCount] = useState(0);
+  const [conversionRate, setConversionRate] = useState<string>('N/A');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [stats, health, audit, msgs, notifs, conversions] = await Promise.all([
+        fetchGlobalStats(),
+        fetchSystemHealth(),
+        fetchAuditLogs({ limit: 5, page: 1 }),
+        fetchAdminMessages(50),
+        fetchAdminNotifications(50),
+        fetchConversions()
+      ]);
+
+      setGlobalStats(stats);
+      setSystemHealthData(health);
+
+      setMessagesCount(Array.isArray(msgs) ? msgs.length : 0);
+      setNotificationsCount(Array.isArray(notifs) ? notifs.length : 0);
+
+      const totalVisitors = Array.isArray(conversions)
+        ? conversions.reduce((sum: number, c: any) => sum + (c?.visitors || 0), 0)
+        : 0;
+      const totalConversions = Array.isArray(conversions)
+        ? conversions.reduce((sum: number, c: any) => sum + (c?.conversions || 0), 0)
+        : 0;
+      setConversionRate(totalVisitors > 0 ? `${((totalConversions / totalVisitors) * 100).toFixed(2)}%` : '0.00%');
+
+      const logs = audit?.logs || [];
+      const mapped: RecentActivityItem[] = logs.map((l: any) => {
+        const type = l?.type || '';
+        const icon = type === 'order' ? ShoppingCart : type === 'message' ? MessageSquare : type === 'login' ? Shield : Users;
+        const color = type === 'failed_login' ? 'text-red-600' : type === 'order' ? 'text-green-600' : 'text-blue-600';
+        return {
+          id: l?._id?.toString?.() || l?.id?.toString?.() || String(Math.random()),
+          action: l?.action || l?.type || 'حدث',
+          details: l?.details || l?.resource || '',
+          time: l?.timestamp ? new Date(l.timestamp).toLocaleString('ar-EG') : '',
+          icon,
+          color
+        };
+      });
+      setRecentActivities(mapped);
+    } catch (e) {
+      console.error('Failed to load central hub data:', e);
+      setError('فشل تحميل بيانات المركز المركزي');
+      setGlobalStats(null);
+      setSystemHealthData(null);
+      setRecentActivities([]);
+      setMessagesCount(0);
+      setNotificationsCount(0);
+      setConversionRate('N/A');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const quickActions = [
-    { id: 'users', title: 'إدارة المستخدمين', icon: Users, href: '/admin/users', color: 'bg-blue-100 text-blue-600', count: 15234 },
-    { id: 'orders', title: 'الطلبات', icon: ShoppingCart, href: '/admin/orders', color: 'bg-green-100 text-green-600', count: 45678 },
-    { id: 'products', title: 'المنتجات', icon: Package, href: '/admin/products', color: 'bg-purple-100 text-purple-600', count: 8923 },
-    { id: 'payments', title: 'المدفوعات', icon: CreditCard, href: '/admin/payments', color: 'bg-yellow-100 text-yellow-600', count: 34567 },
-    { id: 'messages', title: 'الرسائل', icon: MessageSquare, href: '/admin/messages', color: 'bg-red-100 text-red-600', count: 234 },
-    { id: 'analytics', title: 'التحليلات', icon: BarChart3, href: '/admin/analytics', color: 'bg-indigo-100 text-indigo-600', count: null },
-    { id: 'security', title: 'الأمان', icon: Shield, href: '/admin/security', color: 'bg-teal-100 text-teal-600', count: null },
-    { id: 'settings', title: 'الإعدادات', icon: Settings, href: '/admin/settings', color: 'bg-gray-100 text-gray-600', count: null }
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const recentActivities = [
-    { id: 1, type: 'user', action: 'مستخدم جديد', details: 'أحمد محمد سجل حساب جديد', time: '2 دقائق مضت', icon: Users, color: 'text-blue-600' },
-    { id: 2, type: 'order', action: 'طلب جديد', details: 'طلب #12345 بقيمة 1,250 ج', time: '5 دقائق مضت', icon: ShoppingCart, color: 'text-green-600' },
-    { id: 3, type: 'payment', action: 'دفع مكتمل', details: 'دفع ناجح لطلب #12344', time: '10 دقائق مضت', icon: CreditCard, color: 'text-yellow-600' },
-    { id: 4, type: 'system', action: 'تحديث النظام', details: 'تم تحديث النظام إلى الإصدار 2.1.0', time: '15 دقيقة مضت', icon: RefreshCw, color: 'text-purple-600' },
-    { id: 5, type: 'message', action: 'رسالة جديدة', details: 'رسالة من سارة أحمد', time: '20 دقيقة مضت', icon: MessageSquare, color: 'text-red-600' }
-  ];
+  const quickActions = useMemo(() => {
+    return [
+      { id: 'users', title: 'إدارة المستخدمين', icon: Users, href: '/admin/users', color: 'bg-blue-100 text-blue-600', count: globalStats?.totalUsers || 0 },
+      { id: 'orders', title: 'الطلبات', icon: ShoppingCart, href: '/admin/orders', color: 'bg-green-100 text-green-600', count: globalStats?.totalOrders || 0 },
+      { id: 'products', title: 'المنتجات', icon: Package, href: '/admin/products', color: 'bg-purple-100 text-purple-600', count: systemHealthData?.application?.products || 0 },
+      { id: 'payments', title: 'المدفوعات', icon: CreditCard, href: '/admin/payments', color: 'bg-yellow-100 text-yellow-600', count: null },
+      { id: 'messages', title: 'الرسائل', icon: MessageSquare, href: '/admin/messages', color: 'bg-red-100 text-red-600', count: messagesCount },
+      { id: 'notifications', title: 'الإشعارات', icon: Bell, href: '/admin/notifications', color: 'bg-orange-100 text-orange-600', count: notificationsCount },
+      { id: 'analytics', title: 'التحليلات', icon: BarChart3, href: '/admin/analytics', color: 'bg-indigo-100 text-indigo-600', count: null },
+      { id: 'security', title: 'الأمان', icon: Shield, href: '/admin/security', color: 'bg-teal-100 text-teal-600', count: null },
+      { id: 'settings', title: 'الإعدادات', icon: Settings, href: '/admin/settings', color: 'bg-gray-100 text-gray-600', count: null }
+    ];
+  }, [globalStats, systemHealthData, messagesCount, notificationsCount]);
 
-  const systemHealth = [
-    { name: 'الخادم', status: 'online', load: '45%', icon: Server, color: 'text-green-600' },
-    { name: 'قاعدة البيانات', status: 'online', connections: 127, icon: Database, color: 'text-green-600' },
-    { name: 'الشبكة', status: 'online', bandwidth: '1.2 Gbps', icon: Wifi, color: 'text-green-600' },
-    { name: 'API', status: 'online', requests: '1.2M/day', icon: Globe, color: 'text-green-600' }
-  ];
+  const systemHealth = useMemo(() => {
+    const serverStatus = systemHealthData?.server?.status || 'unknown';
+    const dbStatus = systemHealthData?.database?.status || 'unknown';
+    const networkStatus = systemHealthData?.network?.status || 'unknown';
+    return [
+      { name: 'الخادم', status: serverStatus, value: systemHealthData?.server?.cpu !== undefined ? `${systemHealthData.server.cpu}%` : 'N/A', icon: Server, color: serverStatus === 'online' ? 'text-green-600' : 'text-red-600' },
+      { name: 'قاعدة البيانات', status: dbStatus, value: systemHealthData?.database?.connections !== undefined ? String(systemHealthData.database.connections) : 'N/A', icon: Database, color: dbStatus === 'connected' ? 'text-green-600' : 'text-red-600' },
+      { name: 'الشبكة', status: networkStatus, value: systemHealthData?.network?.latency || 'N/A', icon: Wifi, color: networkStatus === 'connected' ? 'text-green-600' : 'text-red-600' },
+      { name: 'API', status: 'online', value: globalStats?.apiRequests ? `${Math.round(globalStats.apiRequests / 1000)}K` : 'N/A', icon: Globe, color: 'text-green-600' }
+    ];
+  }, [systemHealthData, globalStats]);
 
-  const topMetrics = [
-    { name: 'معدل التحويل', value: '68.5%', change: '+2.3%', trend: 'up', icon: Target },
-    { name: 'متوسط قيمة الطلب', value: '456 ج', change: '+12.5%', trend: 'up', icon: DollarSign },
-    { name: 'معدل الاحتفاظ', value: '85.2%', change: '+1.8%', trend: 'up', icon: Users },
-    { name: 'رضا العملاء', value: '4.8/5', change: '+0.3', trend: 'up', icon: Star }
-  ];
+  const topMetrics = useMemo(() => {
+    const totalOrders = globalStats?.totalOrders || 0;
+    const totalRevenue = globalStats?.totalRevenue || 0;
+    const avgOrder = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+    return [
+      { name: 'معدل التحويل', value: conversionRate, change: '', trend: 'up', icon: Target },
+      { name: 'متوسط قيمة الطلب', value: avgOrder ? `${avgOrder.toLocaleString()} ج` : 'N/A', change: '', trend: 'up', icon: DollarSign },
+      { name: 'معدل الاحتفاظ', value: 'N/A', change: '', trend: 'up', icon: Users },
+      { name: 'رضا العملاء', value: 'N/A', change: '', trend: 'up', icon: Star }
+    ];
+  }, [globalStats, conversionRate]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,9 +168,14 @@ export default function AdminCentralHub() {
                 <option value="year">هذا العام</option>
               </select>
               
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <button disabled className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                 <Download className="w-4 h-4" />
                 تصدير تقرير
+              </button>
+
+              <button onClick={loadData} className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                <RefreshCw className="w-4 h-4" />
+                تحديث
               </button>
             </div>
           </div>
@@ -104,6 +183,20 @@ export default function AdminCentralHub() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل بيانات المركز...
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+          </div>
+        ) : !globalStats ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            لا توجد بيانات
+          </div>
+        ) : (
+          <>
         {/* Global Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
@@ -111,7 +204,7 @@ export default function AdminCentralHub() {
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Users className="w-6 h-6 text-blue-600" />
               </div>
-              <span className="text-sm text-green-600 font-medium">+12.5%</span>
+              <span className="text-sm text-gray-600 font-medium">N/A</span>
             </div>
             <h3 className="text-2xl font-bold text-gray-900">{globalStats.totalUsers.toLocaleString()}</h3>
             <p className="text-sm text-gray-600">إجمالي المستخدمين</p>
@@ -123,7 +216,7 @@ export default function AdminCentralHub() {
               <div className="p-2 bg-green-100 rounded-lg">
                 <ShoppingCart className="w-6 h-6 text-green-600" />
               </div>
-              <span className="text-sm text-green-600 font-medium">+8.3%</span>
+              <span className="text-sm text-gray-600 font-medium">N/A</span>
             </div>
             <h3 className="text-2xl font-bold text-gray-900">{globalStats.totalOrders.toLocaleString()}</h3>
             <p className="text-sm text-gray-600">إجمالي الطلبات</p>
@@ -135,7 +228,7 @@ export default function AdminCentralHub() {
               <div className="p-2 bg-yellow-100 rounded-lg">
                 <DollarSign className="w-6 h-6 text-yellow-600" />
               </div>
-              <span className="text-sm text-green-600 font-medium">+{globalStats.growth}%</span>
+              <span className="text-sm text-gray-600 font-medium">{typeof globalStats.growth === 'number' ? `${globalStats.growth}%` : 'N/A'}</span>
             </div>
             <h3 className="text-2xl font-bold text-gray-900">{globalStats.totalRevenue.toLocaleString()} ج</h3>
             <p className="text-sm text-gray-600">إجمالي الإيرادات</p>
@@ -147,7 +240,7 @@ export default function AdminCentralHub() {
               <div className="p-2 bg-purple-100 rounded-lg">
                 <Activity className="w-6 h-6 text-purple-600" />
               </div>
-              <span className="text-sm text-green-600 font-medium">{globalStats.systemUptime}</span>
+              <span className="text-sm text-gray-600 font-medium">{globalStats.systemUptime}</span>
             </div>
             <h3 className="text-2xl font-bold text-gray-900">{globalStats.serverLoad}</h3>
             <p className="text-sm text-gray-600">حمل الخادم</p>
@@ -170,7 +263,7 @@ export default function AdminCentralHub() {
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900">{action.title}</h4>
-                  {action.count && (
+                  {action.count !== null && action.count !== undefined && action.count !== 0 && (
                     <p className="text-xs text-gray-600">{action.count.toLocaleString()}</p>
                   )}
                 </div>
@@ -189,18 +282,22 @@ export default function AdminCentralHub() {
               </div>
               
               <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className={`p-2 bg-white rounded-lg ${activity.color}`}>
-                      <activity.icon className="w-4 h-4" />
+                {recentActivities.length === 0 ? (
+                  <div className="text-center py-8 text-gray-600">لا يوجد نشاط حديث</div>
+                ) : (
+                  recentActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className={`p-2 bg-white rounded-lg ${activity.color}`}>
+                        <activity.icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{activity.action}</h4>
+                        <p className="text-sm text-gray-600">{activity.details}</p>
+                        <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{activity.action}</h4>
-                      <p className="text-sm text-gray-600">{activity.details}</p>
-                      <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -217,7 +314,7 @@ export default function AdminCentralHub() {
                       <div>
                         <h4 className="font-medium text-gray-900">{system.name}</h4>
                         <p className="text-xs text-gray-600">
-                          {system.load || system.connections || system.bandwidth || system.requests}
+                          {system.value}
                         </p>
                       </div>
                     </div>
@@ -243,9 +340,7 @@ export default function AdminCentralHub() {
                     </div>
                     <div className="text-right">
                       <div className="font-medium text-gray-900">{metric.value}</div>
-                      <div className={`text-xs ${metric.trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                        {metric.change}
-                      </div>
+                      <div className="text-xs text-gray-500">{metric.change}</div>
                     </div>
                   </div>
                 ))}
@@ -265,7 +360,7 @@ export default function AdminCentralHub() {
                   <span className="text-sm text-gray-600">وقت الاستجابة</span>
                 </div>
                 <div className="text-2xl font-bold text-gray-900">{globalStats.responseTime}</div>
-                <div className="text-xs text-green-600">أسرع بـ 15%</div>
+                <div className="text-xs text-gray-600">N/A</div>
               </div>
               
               <div className="p-4 bg-gray-50 rounded-lg">
@@ -274,7 +369,7 @@ export default function AdminCentralHub() {
                   <span className="text-sm text-gray-600">معدل الأخطاء</span>
                 </div>
                 <div className="text-2xl font-bold text-gray-900">{globalStats.errorRate}</div>
-                <div className="text-xs text-green-600">أقل بـ 0.05%</div>
+                <div className="text-xs text-gray-600">N/A</div>
               </div>
               
               <div className="p-4 bg-gray-50 rounded-lg">
@@ -291,7 +386,7 @@ export default function AdminCentralHub() {
                   <Globe className="w-4 h-4 text-green-600" />
                   <span className="text-sm text-gray-600">طلبات API</span>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{(globalStats.apiRequests / 1000000).toFixed(1)}M</div>
+                <div className="text-2xl font-bold text-gray-900">{globalStats.apiRequests ? (globalStats.apiRequests / 1000000).toFixed(1) + 'M' : 'N/A'}</div>
                 <div className="text-xs text-gray-600">يومياً</div>
               </div>
             </div>
@@ -318,27 +413,29 @@ export default function AdminCentralHub() {
                 <div className="flex items-center gap-2">
                   <Package className="w-4 h-4 text-blue-500" />
                   <span className="text-gray-600">المنتجات</span>
-                  <span className="text-gray-900 font-medium">23.4 GB</span>
+                  <span className="text-gray-900 font-medium">N/A</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-green-500" />
                   <span className="text-gray-600">المستخدمين</span>
-                  <span className="text-gray-900 font-medium">12.1 GB</span>
+                  <span className="text-gray-900 font-medium">N/A</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4 text-yellow-500" />
                   <span className="text-gray-600">المستندات</span>
-                  <span className="text-gray-900 font-medium">8.7 GB</span>
+                  <span className="text-gray-900 font-medium">N/A</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <ImageIcon className="w-4 h-4 text-purple-500" />
                   <span className="text-gray-600">الصور</span>
-                  <span className="text-gray-900 font-medium">15.8 GB</span>
+                  <span className="text-gray-900 font-medium">N/A</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

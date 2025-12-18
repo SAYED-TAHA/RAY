@@ -1,6 +1,8 @@
 import Order from '../../../models/Order.js';
 import Product from '../../../models/Product.js';
 import User from '../../../models/User.js';
+import os from 'os';
+import AuditLog from '../../../models/AuditLog.js';
 
 export const getSystemHealth = async (req, res) => {
   try {
@@ -15,25 +17,33 @@ export const getSystemHealth = async (req, res) => {
       Order.countDocuments({ createdAt: { $gte: startOfDay } })
     ]);
 
-    // Simulate server metrics (in production, use actual monitoring)
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const usedMem = totalMem - freeMem;
+    const memoryPercent = totalMem > 0 ? Math.round((usedMem / totalMem) * 100) : 0;
+
+    const load = os.loadavg?.()[0] ?? 0;
+    const cores = os.cpus()?.length || 1;
+    const cpuApprox = Math.min(100, Math.max(0, Math.round((load / cores) * 100)));
+
     const systemInfo = {
       server: {
         status: 'online',
         uptime: Math.floor(process.uptime() / 3600) + ' hours',
-        cpu: Math.floor(Math.random() * 40) + 20,
-        memory: Math.floor(Math.random() * 30) + 40,
-        storage: 78
+        cpu: cpuApprox,
+        memory: memoryPercent,
+        storage: 0
       },
       database: {
         status: 'connected',
-        size: '2.4 GB',
-        connections: Math.floor(Math.random() * 20) + 5,
+        size: 'N/A',
+        connections: 0,
         queries: orderCount + productCount + userCount
       },
       network: {
         status: 'connected',
-        bandwidth: '1.2 Gbps',
-        latency: Math.floor(Math.random() * 100) + 50 + 'ms'
+        bandwidth: 'N/A',
+        latency: 'N/A'
       },
       application: {
         orders: orderCount,
@@ -55,34 +65,17 @@ export const getSystemLogs = async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
     const level = req.query.level || 'all';
 
-    // In production, fetch from actual logging system
-    const logs = [
-      {
-        id: '1',
-        level: 'info',
-        message: 'System started successfully',
-        timestamp: new Date(Date.now() - 3600000).toISOString()
-      },
-      {
-        id: '2',
-        level: 'info',
-        message: 'Database connection established',
-        timestamp: new Date(Date.now() - 3000000).toISOString()
-      },
-      {
-        id: '3',
-        level: 'warning',
-        message: 'High memory usage detected',
-        timestamp: new Date(Date.now() - 1800000).toISOString()
-      }
-    ];
+    const auditLogs = await AuditLog.find({}).sort({ timestamp: -1 }).limit(limit);
+    const mapped = auditLogs.map((l) => ({
+      id: l._id.toString(),
+      level: l.status === 'failed' ? 'error' : 'info',
+      message: l.details || l.action || l.type,
+      timestamp: (l.timestamp || l.createdAt || new Date()).toISOString()
+    }));
 
-    const filtered = level === 'all' ? logs : logs.filter(log => log.level === level);
+    const filtered = level === 'all' ? mapped : mapped.filter(log => log.level === level);
 
-    res.status(200).json({
-      logs: filtered.slice(0, limit),
-      total: filtered.length
-    });
+    res.status(200).json({ logs: filtered, total: filtered.length });
   } catch (error) {
     console.error('Get system logs error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -98,8 +91,15 @@ export const getSystemStats = async (req, res) => {
       Order.countDocuments(),
       Order.aggregate([{ $group: { _id: null, total: { $sum: '$pricing.total' } } }]),
       User.countDocuments(),
-      User.countDocuments({ status: 'active' })
+      User.countDocuments({ isActive: true })
     ]);
+
+    const [apiRequests, failedRequests] = await Promise.all([
+      AuditLog.countDocuments({ timestamp: { $gte: lastMonth } }),
+      AuditLog.countDocuments({ timestamp: { $gte: lastMonth }, status: 'failed' })
+    ]);
+
+    const errorRate = apiRequests > 0 ? ((failedRequests / apiRequests) * 100).toFixed(2) + '%' : '0%';
 
     const stats = {
       orders: totalOrders,
@@ -107,9 +107,9 @@ export const getSystemStats = async (req, res) => {
       users: totalUsers,
       activeUsers: activeUsers,
       systemUptime: '99.9%',
-      apiRequests: Math.floor(Math.random() * 1000000) + 500000,
-      errorRate: '0.1%',
-      responseTime: Math.floor(Math.random() * 200) + 100 + 'ms'
+      apiRequests,
+      errorRate,
+      responseTime: 'N/A'
     };
 
     res.status(200).json(stats);

@@ -1,5 +1,19 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+const getAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const storedTokens = localStorage.getItem('authTokens');
+  if (storedTokens) {
+    try {
+      const parsed = JSON.parse(storedTokens);
+      if (parsed?.accessToken) return parsed.accessToken;
+    } catch {
+      // ignore
+    }
+  }
+  return localStorage.getItem('authToken');
+};
+
 export interface CartItem {
   productId: string;
   name: string;
@@ -20,7 +34,7 @@ export interface Cart {
 
 export const getCart = async (): Promise<Cart> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -35,7 +49,7 @@ export const getCart = async (): Promise<Cart> => {
 
 export const addToCart = async (productId: string, quantity: number = 1): Promise<Cart> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -60,7 +74,7 @@ export const addToCart = async (productId: string, quantity: number = 1): Promis
 
 export const updateCartItem = async (productId: string, quantity: number): Promise<Cart> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -85,7 +99,7 @@ export const updateCartItem = async (productId: string, quantity: number): Promi
 
 export const removeFromCart = async (productId: string): Promise<Cart> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -110,7 +124,7 @@ export const removeFromCart = async (productId: string): Promise<Cart> => {
 
 export const clearCart = async (): Promise<Cart> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 

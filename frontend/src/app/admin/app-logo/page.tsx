@@ -1,12 +1,54 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ImageIcon, Upload, Trash2, Save } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ImageIcon, Upload, Save } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSettings, updateAdminSettings } from '../../../services/adminSettingsService';
 
 export default function AdminAppLogo() {
-  const [logo, setLogo] = useState('/logo.png');
-  const [favicon, setFavicon] = useState('/favicon.ico');
+  const [logo, setLogo] = useState('');
+  const [favicon, setFavicon] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const settings = await fetchAdminSettings();
+        setLogo(settings?.ui?.branding?.logoUrl || '');
+        setFavicon(settings?.ui?.branding?.faviconUrl || '');
+      } catch (e: any) {
+        console.error('Failed to load admin settings:', e);
+        setError(e?.message || 'فشل تحميل الإعدادات');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      await updateAdminSettings({
+        ui: {
+          branding: {
+            logoUrl: logo,
+            faviconUrl: favicon
+          }
+        }
+      } as any);
+    } catch (e: any) {
+      console.error('Failed to update admin settings:', e);
+      setError(e?.message || 'فشل حفظ الإعدادات');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -22,15 +64,26 @@ export default function AdminAppLogo() {
                 <p className="text-sm text-gray-600">تغيير الشعار والأيقونة</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <button
+              onClick={handleSave}
+              disabled={loading || saving}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
+            >
               <Save className="w-4 h-4" />
-              حفظ
+              {saving ? 'جاري الحفظ...' : 'حفظ'}
             </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>
+        )}
+
+        {loading ? (
+          <div className="text-gray-600">جاري تحميل الإعدادات...</div>
+        ) : (
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200">
             <h2 className="text-lg font-bold text-gray-900 mb-6">الشعار الرئيسي</h2>
@@ -43,7 +96,14 @@ export default function AdminAppLogo() {
                     <p className="text-gray-600">الشعار الحالي</p>
                   </div>
                 </div>
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                <input
+                  type="text"
+                  value={logo}
+                  onChange={(e) => setLogo(e.target.value)}
+                  placeholder="/logo.png أو https://..."
+                  className="w-full mb-3 px-4 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+                <button disabled className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                   <Upload className="w-4 h-4" />
                   رفع شعار جديد
                 </button>
@@ -79,7 +139,14 @@ export default function AdminAppLogo() {
                     <p className="text-gray-600">الأيقونة الحالية</p>
                   </div>
                 </div>
-                <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                <input
+                  type="text"
+                  value={favicon}
+                  onChange={(e) => setFavicon(e.target.value)}
+                  placeholder="/favicon.ico أو https://..."
+                  className="w-full mb-3 px-4 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+                <button disabled className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                   <Upload className="w-4 h-4" />
                   رفع أيقونة جديدة
                 </button>
@@ -104,6 +171,7 @@ export default function AdminAppLogo() {
             </div>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

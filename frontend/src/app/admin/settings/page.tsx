@@ -1,24 +1,25 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
-  Settings, Globe, Bell, Shield, Database, Mail, Phone,
-  Save, RefreshCw, CheckCircle, AlertCircle, XCircle,
-  User, Building, DollarSign, Palette, FileText,
-  ToggleRight, ToggleLeft, Upload, Download, Eye,
-  CreditCard, Package, Users, Clock, Calendar
+  Settings, Bell, Shield,
+  Save, RefreshCw,
+  CreditCard
 } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSettings, updateAdminSettings } from '../../../services/adminSettingsService';
 
 export default function AdminSettings() {
   const [activeTab, setActiveTab] = useState('general');
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [generalSettings, setGeneralSettings] = useState({
-    siteName: 'Ray Egypt',
-    siteUrl: 'https://ray-egypt.com',
-    adminEmail: 'admin@ray-egypt.com',
-    supportPhone: '+20 123 456 7890',
+    siteName: '',
+    siteUrl: '',
+    adminEmail: '',
+    supportPhone: '',
     timezone: 'Africa/Cairo',
     language: 'ar',
     currency: 'EGP',
@@ -38,7 +39,7 @@ export default function AdminSettings() {
   });
 
   const [securitySettings, setSecuritySettings] = useState({
-    twoFactorAuth: true,
+    twoFactorAuth: false,
     sessionTimeout: 30,
     passwordMinLength: 8,
     requireStrongPassword: true,
@@ -49,13 +50,13 @@ export default function AdminSettings() {
   });
 
   const [paymentSettings, setPaymentSettings] = useState({
-    paypalEnabled: true,
-    stripeEnabled: true,
+    paypalEnabled: false,
+    stripeEnabled: false,
     cashOnDelivery: true,
     bankTransfer: true,
-    taxRate: 14,
-    shippingFee: 25,
-    freeShippingThreshold: 500
+    taxRate: 0,
+    shippingFee: 0,
+    freeShippingThreshold: 0
   });
 
   const tabs = [
@@ -65,11 +66,57 @@ export default function AdminSettings() {
     { id: 'payment', label: 'المدفوعات', icon: CreditCard }
   ];
 
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchAdminSettings();
+      if (data?.general) setGeneralSettings(data.general);
+      if (data?.notifications) setNotificationSettings(data.notifications);
+      if (data?.security) {
+        setSecuritySettings((prev) => ({
+          ...prev,
+          ...data.security
+        }));
+      }
+      if (data?.payment) setPaymentSettings(data.payment);
+    } catch (e) {
+      console.error('Failed to load admin settings:', e);
+      setError('فشل تحميل الإعدادات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
   const handleSave = async () => {
-    setSaving(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setSaving(false);
+    try {
+      setSaving(true);
+      setError(null);
+      const updated = await updateAdminSettings({
+        general: generalSettings,
+        notifications: notificationSettings,
+        security: securitySettings,
+        payment: paymentSettings
+      });
+      if (updated?.general) setGeneralSettings(updated.general);
+      if (updated?.notifications) setNotificationSettings(updated.notifications);
+      if (updated?.security) {
+        setSecuritySettings((prev) => ({
+          ...prev,
+          ...updated.security
+        }));
+      }
+      if (updated?.payment) setPaymentSettings(updated.payment);
+    } catch (e: any) {
+      console.error('Failed to save admin settings:', e);
+      setError(e?.message || 'فشل حفظ الإعدادات');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderGeneralSettings = () => (
@@ -548,10 +595,22 @@ export default function AdminSettings() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeTab === 'general' && renderGeneralSettings()}
-        {activeTab === 'notifications' && renderNotificationSettings()}
-        {activeTab === 'security' && renderSecuritySettings()}
-        {activeTab === 'payment' && renderPaymentSettings()}
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل الإعدادات...
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+          </div>
+        ) : (
+          <>
+            {activeTab === 'general' && renderGeneralSettings()}
+            {activeTab === 'notifications' && renderNotificationSettings()}
+            {activeTab === 'security' && renderSecuritySettings()}
+            {activeTab === 'payment' && renderPaymentSettings()}
+          </>
+        )}
       </div>
     </div>
   );

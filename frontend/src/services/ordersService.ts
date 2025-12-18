@@ -5,6 +5,20 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+ const getAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const storedTokens = localStorage.getItem('authTokens');
+  if (storedTokens) {
+    try {
+      const parsed = JSON.parse(storedTokens);
+      if (parsed?.accessToken) return parsed.accessToken;
+    } catch {
+      // ignore
+    }
+  }
+  return localStorage.getItem('authToken');
+ };
+
 export interface Order {
   _id: string;
   orderNumber: string;
@@ -111,7 +125,9 @@ export interface OrderFilters {
 /**
  * جلب جميع الطلبات مع الفلترة والترقيم
  */
-export const fetchOrders = async (filters: OrderFilters = {}): Promise<{
+export const fetchOrders = async (
+  filters: OrderFilters = {}
+): Promise<{
   orders: Order[];
   pagination: {
     current: number;
@@ -122,7 +138,7 @@ export const fetchOrders = async (filters: OrderFilters = {}): Promise<{
 }> => {
   try {
     const params = new URLSearchParams();
-    
+
     // إضافة معلمات الفلترة
     if (filters.status) params.append('status', filters.status);
     if (filters.paymentStatus) params.append('paymentStatus', filters.paymentStatus);
@@ -135,9 +151,9 @@ export const fetchOrders = async (filters: OrderFilters = {}): Promise<{
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
 
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
-    
+
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -145,11 +161,11 @@ export const fetchOrders = async (filters: OrderFilters = {}): Promise<{
     const response = await fetch(`${API_URL}/api/orders?${params}`, {
       headers
     });
-    
+
     if (!response.ok) {
       throw new Error('فشل جلب الطلبات');
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب الطلبات:', error);
@@ -162,7 +178,7 @@ export const fetchOrders = async (filters: OrderFilters = {}): Promise<{
  */
 export const fetchOrderById = async (id: string): Promise<Order | null> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     
     if (token) {
@@ -189,7 +205,7 @@ export const fetchOrderById = async (id: string): Promise<Order | null> => {
  */
 export const createOrder = async (orderData: Omit<Order, '_id' | 'createdAt' | 'updatedAt'>): Promise<Order> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = { 
       'Content-Type': 'application/json' 
     };
@@ -221,7 +237,7 @@ export const createOrder = async (orderData: Omit<Order, '_id' | 'createdAt' | '
  */
 export const updateOrder = async (id: string, orderData: Partial<Order>): Promise<Order> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = { 
       'Content-Type': 'application/json' 
     };
@@ -253,7 +269,7 @@ export const updateOrder = async (id: string, orderData: Partial<Order>): Promis
  */
 export const updateOrderStatus = async (id: string, status: string, paymentStatus?: string): Promise<Order> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = { 
       'Content-Type': 'application/json' 
     };
@@ -290,7 +306,7 @@ export const updateOrderStatus = async (id: string, status: string, paymentStatu
  */
 export const deleteOrder = async (id: string): Promise<boolean> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     
     if (token) {
@@ -319,7 +335,7 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
  */
 export const fetchOrderStats = async (): Promise<OrderStats> => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     
     if (token) {

@@ -2,59 +2,55 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Bell, Search, Filter, Download, Eye, Edit, Trash2,
-  Send, CheckCircle, XCircle, Clock, AlertCircle, Calendar,
-  User, Mail, Phone, MessageSquare, Settings, RefreshCw,
-  Plus, ChevronDown, MoreVertical, Volume2, VolumeX,
-  Zap, Globe, Shield, Users, ShoppingCart, Package,
-  CreditCard, FileText, TrendingUp, Activity, CheckCheck, Loader
+  Bell, Search, Download, Eye, Edit, Trash2,
+  Send, Calendar,
+  RefreshCw, Plus,
+  FileText, Loader
 } from 'lucide-react';
 import Link from 'next/link';
-
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  type: string;
-  priority: string;
-  status: string;
-  recipients: string;
-  sentAt: string | null;
-  scheduledAt: string | null;
-  readBy: number;
-  totalRecipients: number;
-  deliveryRate: number;
-  createdBy: string;
-}
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { fetchAdminNotifications, AdminNotification } from '../../../services/adminNotificationsService';
 
 export default function AdminNotifications() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchNotifications = async () => {
+    const load = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_URL}/api/admin/notifications`);
-        if (response.ok) {
-          const data = await response.json();
-          setNotifications(data);
-        }
-      } catch (error) {
-        console.error('خطأ في جلب الإشعارات:', error);
+        setError(null);
+        const data = await fetchAdminNotifications(200);
+        setNotifications(data);
+      } catch (e) {
+        console.error('خطأ في جلب الإشعارات:', e);
+        setNotifications([]);
+        setError('فشل تحميل الإشعارات');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchNotifications();
+    load();
   }, []);
+
+  const handleRefresh = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await fetchAdminNotifications(200);
+      setNotifications(data);
+    } catch (e) {
+      console.error('خطأ في تحديث الإشعارات:', e);
+      setError('فشل تحديث الإشعارات');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -71,7 +67,25 @@ export default function AdminNotifications() {
     );
   }
 
-  const filteredNotifications = notifications.filter((notification: Notification) => {
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <div className="mt-4">
+              <button onClick={handleRefresh} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                <RefreshCw className="w-4 h-4" />
+                إعادة المحاولة
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredNotifications = notifications.filter((notification: AdminNotification) => {
     const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          notification.message.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = selectedType === 'all' || notification.type === selectedType;
@@ -81,16 +95,16 @@ export default function AdminNotifications() {
 
   const types = [
     { id: 'all', label: 'جميع الأنواع', count: notifications.length },
-    { id: 'system', label: 'نظام', count: notifications.filter((n: Notification) => n.type === 'system').length },
-    { id: 'promotion', label: 'ترويج', count: notifications.filter((n: Notification) => n.type === 'promotion').length },
-    { id: 'maintenance', label: 'صيانة', count: notifications.filter((n: Notification) => n.type === 'maintenance').length }
+    { id: 'system', label: 'نظام', count: notifications.filter((n: AdminNotification) => n.type === 'system').length },
+    { id: 'promotion', label: 'ترويج', count: notifications.filter((n: AdminNotification) => n.type === 'promotion').length },
+    { id: 'maintenance', label: 'صيانة', count: notifications.filter((n: AdminNotification) => n.type === 'maintenance').length }
   ];
 
   const statuses = [
     { id: 'all', label: 'جميع الحالات', count: notifications.length },
-    { id: 'sent', label: 'تم الإرسال', count: notifications.filter((n: Notification) => n.status === 'sent').length },
-    { id: 'scheduled', label: 'مجدول', count: notifications.filter((n: Notification) => n.status === 'scheduled').length },
-    { id: 'draft', label: 'مسودة', count: notifications.filter((n: Notification) => n.status === 'draft').length }
+    { id: 'sent', label: 'تم الإرسال', count: notifications.filter((n: AdminNotification) => n.status === 'sent').length },
+    { id: 'scheduled', label: 'مجدول', count: notifications.filter((n: AdminNotification) => n.status === 'scheduled').length },
+    { id: 'draft', label: 'مسودة', count: notifications.filter((n: AdminNotification) => n.status === 'draft').length }
   ];
 
   const getStatusBadge = (status: string) => {
@@ -134,9 +148,9 @@ export default function AdminNotifications() {
 
   const stats = {
     total: notifications.length,
-    sent: notifications.filter((n: Notification) => n.status === 'sent').length,
-    scheduled: notifications.filter((n: Notification) => n.status === 'scheduled').length,
-    draft: notifications.filter((n: Notification) => n.status === 'draft').length
+    sent: notifications.filter((n: AdminNotification) => n.status === 'sent').length,
+    scheduled: notifications.filter((n: AdminNotification) => n.status === 'scheduled').length,
+    draft: notifications.filter((n: AdminNotification) => n.status === 'draft').length
   };
 
   return (
@@ -156,11 +170,15 @@ export default function AdminNotifications() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <button onClick={handleRefresh} className="flex items-center gap-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                <RefreshCw className="w-4 h-4" />
+                تحديث
+              </button>
+              <button disabled className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                 <Plus className="w-4 h-4" />
                 إشعار جديد
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+              <button disabled className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg opacity-60 cursor-not-allowed">
                 <Download className="w-4 h-4" />
                 تصدير
               </button>
@@ -267,7 +285,7 @@ export default function AdminNotifications() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredNotifications.map((notification: Notification) => (
+                {filteredNotifications.map((notification: AdminNotification) => (
                   <div key={notification.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -296,13 +314,13 @@ export default function AdminNotifications() {
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                        <button disabled className="p-2 rounded-lg opacity-60 cursor-not-allowed">
                           <Eye className="w-4 h-4 text-gray-600" />
                         </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                        <button disabled className="p-2 rounded-lg opacity-60 cursor-not-allowed">
                           <Edit className="w-4 h-4 text-gray-600" />
                         </button>
-                        <button className="p-2 hover:bg-red-100 rounded-lg transition">
+                        <button disabled className="p-2 rounded-lg opacity-60 cursor-not-allowed">
                           <Trash2 className="w-4 h-4 text-red-600" />
                         </button>
                       </div>

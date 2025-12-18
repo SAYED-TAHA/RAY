@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout, Save, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSettings, updateAdminSettings } from '../../../services/adminSettingsService';
 
 export default function AdminHeader() {
   const [settings, setSettings] = useState({
@@ -20,6 +21,119 @@ export default function AdminHeader() {
     height: 'normal'
   });
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data: any = await fetchAdminSettings();
+      setSettings((prev) => ({
+        ...prev,
+        visible: data?.ui?.header?.visible ?? prev.visible,
+        sticky: data?.ui?.header?.sticky ?? prev.sticky,
+        transparent: data?.ui?.header?.transparent ?? prev.transparent,
+        backgroundColor: data?.ui?.header?.backgroundColor ?? prev.backgroundColor,
+        textColor: data?.ui?.header?.textColor ?? prev.textColor,
+        logoSize: data?.ui?.header?.logoSize ?? prev.logoSize,
+        menuPosition: data?.ui?.header?.menuPosition ?? prev.menuPosition,
+        searchEnabled: data?.ui?.header?.searchEnabled ?? prev.searchEnabled,
+        cartEnabled: data?.ui?.header?.cartEnabled ?? prev.cartEnabled,
+        userMenuEnabled: data?.ui?.header?.userMenuEnabled ?? prev.userMenuEnabled,
+        notificationsEnabled: data?.ui?.header?.notificationsEnabled ?? prev.notificationsEnabled,
+        height: data?.ui?.header?.height ?? prev.height
+      }));
+    } catch (e) {
+      console.error('Failed to load header settings:', e);
+      setError('فشل تحميل إعدادات الهيدر');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      await updateAdminSettings({
+        ui: {
+          header: { ...settings },
+          visibility: {
+            headerVisible: settings.visible
+          }
+        }
+      } as any);
+    } catch (e: any) {
+      console.error('Failed to save header settings:', e);
+      setError(e?.message || 'فشل حفظ إعدادات الهيدر');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-4">
+                <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-lg transition">
+                  <Layout className="w-6 h-6 text-gray-600" />
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">الهيدر</h1>
+                  <p className="text-sm text-gray-600">التحكم في رأس الصفحة</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل الإعدادات...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-4">
+                <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-lg transition">
+                  <Layout className="w-6 h-6 text-gray-600" />
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">الهيدر</h1>
+                  <p className="text-sm text-gray-600">التحكم في رأس الصفحة</p>
+                </div>
+              </div>
+              <button onClick={load} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                إعادة المحاولة
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white border-b border-gray-200">
@@ -34,7 +148,7 @@ export default function AdminHeader() {
                 <p className="text-sm text-gray-600">التحكم في رأس الصفحة</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition">
               <Save className="w-4 h-4" />
               حفظ
             </button>

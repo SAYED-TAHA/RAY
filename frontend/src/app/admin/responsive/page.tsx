@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Smartphone, Tablet, Monitor, Eye, EyeOff } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Smartphone, Tablet, Monitor, Eye, EyeOff, Save } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSettings, updateAdminSettings } from '../../../services/adminSettingsService';
 
 export default function AdminResponsive() {
   const [settings, setSettings] = useState({
@@ -13,6 +14,50 @@ export default function AdminResponsive() {
     tabletBreakpoint: 1024,
     desktopBreakpoint: 1280
   });
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchAdminSettings();
+        const responsive = data?.ui?.responsive;
+        if (responsive) {
+          setSettings((prev) => ({
+            ...prev,
+            ...responsive
+          }));
+        }
+      } catch (e: any) {
+        console.error('Failed to load admin settings:', e);
+        setError(e?.message || 'فشل تحميل الإعدادات');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      setError(null);
+      await updateAdminSettings({
+        ui: {
+          responsive: { ...settings }
+        }
+      } as any);
+    } catch (e: any) {
+      console.error('Failed to update admin settings:', e);
+      setError(e?.message || 'فشل حفظ الإعدادات');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -28,11 +73,27 @@ export default function AdminResponsive() {
                 <p className="text-sm text-gray-600">إعدادات العرض على الأجهزة المختلفة</p>
               </div>
             </div>
+            <button
+              onClick={handleSave}
+              disabled={loading || saving}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'جاري الحفظ...' : 'حفظ'}
+            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>
+        )}
+
+        {loading ? (
+          <div className="text-gray-600">جاري تحميل الإعدادات...</div>
+        ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between mb-4">
@@ -94,6 +155,8 @@ export default function AdminResponsive() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

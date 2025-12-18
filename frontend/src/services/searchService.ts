@@ -62,7 +62,7 @@ export const searchProducts = async (options: SearchOptions): Promise<SearchResu
     if (options.page) params.append('page', options.page.toString());
     if (options.limit) params.append('limit', options.limit.toString());
 
-    const response = await fetch(`${API_URL}/api/products/search?${params}`);
+    const response = await fetch(`${API_URL}/api/search?${params}`);
     if (!response.ok) {
       throw new Error('فشل البحث عن المنتجات');
     }
@@ -84,7 +84,7 @@ export const searchProducts = async (options: SearchOptions): Promise<SearchResu
  */
 export const getKeywordSuggestions = async (query: string): Promise<KeywordSuggestion[]> => {
   try {
-    const response = await fetch(`${API_URL}/api/products/suggestions?q=${encodeURIComponent(query)}`);
+    const response = await fetch(`${API_URL}/api/search/suggestions?q=${encodeURIComponent(query)}`);
     if (!response.ok) {
       throw new Error('فشل جلب الاقتراحات');
     }
@@ -100,7 +100,7 @@ export const getKeywordSuggestions = async (query: string): Promise<KeywordSugge
  */
 export const getPopularKeywords = async (limit: number = 10): Promise<KeywordSuggestion[]> => {
   try {
-    const response = await fetch(`${API_URL}/api/products/keywords/popular?limit=${limit}`);
+    const response = await fetch(`${API_URL}/api/search/keywords/popular?limit=${limit}`);
     if (!response.ok) {
       throw new Error('فشل جلب الكلمات الشائعة');
     }

@@ -43,7 +43,7 @@ export default function AdminCreatePackage() {
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200">
-          <form className="space-y-6">
+          <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">اسم الباقة</label>
               <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="مثال: الباقة المميزة" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
@@ -101,7 +101,7 @@ export default function AdminCreatePackage() {
             </div>
 
             <div className="flex gap-3 pt-6">
-              <button type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <button disabled type="submit" className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                 <Save className="w-4 h-4" />
                 إنشاء الباقة
               </button>

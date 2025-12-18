@@ -1,5 +1,19 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+const getAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const storedTokens = localStorage.getItem('authTokens');
+  if (storedTokens) {
+    try {
+      const parsed = JSON.parse(storedTokens);
+      if (parsed?.accessToken) return parsed.accessToken;
+    } catch {
+      // ignore
+    }
+  }
+  return localStorage.getItem('authToken');
+};
+
 export interface GlobalStats {
   totalUsers: number;
   activeUsers: number;
@@ -18,30 +32,35 @@ export interface GlobalStats {
 
 export const fetchGlobalStats = async () => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const [analytics, users, system] = await Promise.all([
+    const [analytics, users, system, health, orderStats] = await Promise.all([
       fetch(`${API_URL}/api/analytics/dashboard`, { headers }).then(r => r.json()),
       fetch(`${API_URL}/api/users/stats`, { headers }).then(r => r.json()),
-      fetch(`${API_URL}/api/system/stats`, { headers }).then(r => r.json())
+      fetch(`${API_URL}/api/system/stats`, { headers }).then(r => r.json()),
+      fetch(`${API_URL}/api/system/health`, { headers }).then(r => r.json()),
+      fetch(`${API_URL}/api/orders/stats`, { headers }).then(r => r.json())
     ]);
+
+    const cpu = typeof health?.server?.cpu === 'number' ? health.server.cpu : null;
+    const storage = typeof health?.server?.storage === 'number' ? health.server.storage : null;
 
     return {
       totalUsers: users.totalUsers || 0,
       activeUsers: users.activeUsers || 0,
-      totalOrders: analytics.overview?.orders?.current || 0,
-      pendingOrders: Math.floor((analytics.overview?.orders?.current || 0) * 0.1),
+      totalOrders: orderStats?.totalOrders || analytics.overview?.orders?.current || 0,
+      pendingOrders: orderStats?.pendingOrders || 0,
       totalRevenue: analytics.overview?.revenue?.current || 0,
       growth: analytics.overview?.revenue?.change || 0,
-      systemUptime: system.systemUptime || '99.9%',
-      serverLoad: '45%',
-      storageUsed: '67%',
+      systemUptime: system?.systemUptime || health?.server?.uptime || 'N/A',
+      serverLoad: cpu !== null ? `${cpu}%` : 'N/A',
+      storageUsed: storage !== null ? `${storage}%` : 'N/A',
       databaseConnections: system.databaseConnections || 0,
       apiRequests: system.apiRequests || 0,
-      errorRate: system.errorRate || '0.1%',
-      responseTime: system.responseTime || '245ms'
+      errorRate: system?.errorRate || 'N/A',
+      responseTime: system?.responseTime || 'N/A'
     };
   } catch (error) {
     console.error('Error fetching global stats:', error);

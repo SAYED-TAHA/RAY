@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calculator, TrendingUp, TrendingDown, BarChart3, Download, Loader } from 'lucide-react';
 import Link from 'next/link';
+import { fetchFinancialAnalysis } from '../../../services/adminFinanceService';
 
 interface AnalysisData {
   revenue: number;
@@ -20,31 +21,31 @@ interface MonthlyData {
   profit: number;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
 export default function AdminFinancialAnalysis() {
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchAnalysis = async () => {
+    const load = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_URL}/api/admin/financial-analysis`);
-        if (response.ok) {
-          const data = await response.json();
-          setAnalysis(data.analysis);
-          setMonthlyData(data.monthlyData);
-        }
+        setError(null);
+        const data = await fetchFinancialAnalysis();
+        setAnalysis(data.analysis);
+        setMonthlyData(data.monthlyData || []);
       } catch (error) {
         console.error('خطأ في جلب البيانات المالية:', error);
+        setAnalysis(null);
+        setMonthlyData([]);
+        setError('فشل تحميل البيانات المالية');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchAnalysis();
+    load();
   }, []);
 
   return (
@@ -75,6 +76,18 @@ export default function AdminFinancialAnalysis() {
             <div className="text-center">
               <Loader className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
               <p className="text-gray-600">جاري تحميل البيانات...</p>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <div className="mt-4">
+              <button
+                onClick={() => window.location.reload()}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                إعادة المحاولة
+              </button>
             </div>
           </div>
         ) : analysis ? (
@@ -151,7 +164,7 @@ export default function AdminFinancialAnalysis() {
                       </div>
                       <div>
                         <p className="text-gray-600">الهامش</p>
-                        <p className="font-medium text-green-600">{((data.profit/data.revenue)*100).toFixed(1)}%</p>
+                        <p className="font-medium text-green-600">{(data.revenue > 0 ? ((data.profit / data.revenue) * 100) : 0).toFixed(1)}%</p>
                       </div>
                     </div>
                   </div>

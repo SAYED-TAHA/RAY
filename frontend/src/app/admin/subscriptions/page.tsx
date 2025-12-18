@@ -1,20 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Crown, Search, Filter, Download, CheckCircle, XCircle, Clock, RefreshCw, Plus } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Crown, Search, Download, CheckCircle, XCircle, Clock, RefreshCw, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSubscriptions, type AdminSubscription } from '../../../services/adminSubscriptionsService';
 
 export default function AdminSubscriptions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
 
-  const subscriptions = [
-    { id: 'SUB001', user: 'أحمد محمد', package: 'الباقة المميزة', status: 'active', startDate: '2025-11-01', endDate: '2025-12-01', amount: 299, autoRenew: true },
-    { id: 'SUB002', user: 'سارة أحمد', package: 'الباقة الأساسية', status: 'active', startDate: '2025-11-15', endDate: '2025-12-15', amount: 99, autoRenew: false },
-    { id: 'SUB003', user: 'محمد علي', package: 'الباقة الذهبية', status: 'expired', startDate: '2025-10-01', endDate: '2025-11-01', amount: 599, autoRenew: true },
-    { id: 'SUB004', user: 'فاطمة حسن', package: 'الباقة المؤسسية', status: 'cancelled', startDate: '2025-09-01', endDate: '2025-10-01', amount: 999, autoRenew: false },
-    { id: 'SUB005', user: 'خالد محمود', package: 'الباقة المميزة', status: 'pending', startDate: '2025-12-06', endDate: '2026-01-06', amount: 299, autoRenew: true }
-  ];
+  const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchAdminSubscriptions(500);
+      setSubscriptions(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      console.error('Failed to load subscriptions:', e);
+      setError(e?.message || 'فشل تحميل الاشتراكات');
+      setSubscriptions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const stats = {
     total: subscriptions.length,
@@ -55,9 +71,11 @@ export default function AdminSubscriptions() {
   };
 
   const filteredSubscriptions = subscriptions.filter(subscription => {
-    const matchesSearch = subscription.user.includes(searchTerm) || 
-                         subscription.package.includes(searchTerm) ||
-                         subscription.id.includes(searchTerm);
+    const user = subscription.user || '';
+    const pkg = subscription.package || '';
+    const id = subscription.id || '';
+    const term = searchTerm.trim();
+    const matchesSearch = !term || user.includes(term) || pkg.includes(term) || id.includes(term);
     const matchesStatus = selectedStatus === 'all' || subscription.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
@@ -76,7 +94,7 @@ export default function AdminSubscriptions() {
                 <p className="text-sm text-gray-600">إدارة اشتراكات المستخدمين</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <button disabled className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60">
               <Plus className="w-4 h-4" />
               اشتراك جديد
             </button>
@@ -85,6 +103,21 @@ export default function AdminSubscriptions() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="mb-6 bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <button onClick={load} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل الاشتراكات...
+          </div>
+        ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
             <div className="flex items-center justify-between">
@@ -153,7 +186,7 @@ export default function AdminSubscriptions() {
                 <option value="pending">معلق</option>
               </select>
               
-              <button className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+              <button disabled className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg opacity-60 cursor-not-allowed">
                 <Download className="w-4 h-4" />
                 تصدير
               </button>
@@ -177,7 +210,13 @@ export default function AdminSubscriptions() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {filteredSubscriptions.map(subscription => (
+                {filteredSubscriptions.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-6 py-10 text-center text-gray-600">
+                      لا توجد اشتراكات
+                    </td>
+                  </tr>
+                ) : filteredSubscriptions.map(subscription => (
                   <tr key={subscription.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{subscription.id}</div>
@@ -194,11 +233,11 @@ export default function AdminSubscriptions() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <div>{subscription.startDate}</div>
-                      <div className="text-xs">إلى {subscription.endDate}</div>
+                      <div>{subscription.startDate || '—'}</div>
+                      <div className="text-xs">إلى {subscription.endDate || '—'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {subscription.amount} ج.م
+                      {subscription.amount} {subscription.currency || 'EGP'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${subscription.autoRenew ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
@@ -207,10 +246,10 @@ export default function AdminSubscriptions() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-left">
                       <div className="flex items-center gap-2">
-                        <button className="text-blue-600 hover:text-blue-900">
+                        <button disabled className="text-blue-600 opacity-60">
                           تعديل
                         </button>
-                        <button className="text-red-600 hover:text-red-900">
+                        <button disabled className="text-red-600 opacity-60">
                           إلغاء
                         </button>
                       </div>
@@ -221,6 +260,8 @@ export default function AdminSubscriptions() {
             </table>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

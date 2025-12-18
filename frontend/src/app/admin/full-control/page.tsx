@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Settings2, Save, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSettings, updateAdminSettings } from '../../../services/adminSettingsService';
 
 export default function AdminFullControl() {
   const [settings, setSettings] = useState({
-    siteName: 'راي للتقنية',
-    siteDescription: 'منصة متكاملة للخدمات الرقمية',
+    siteName: '',
+    siteDescription: '',
     maintenanceMode: false,
     debugMode: false,
     cacheEnabled: true,
@@ -21,15 +22,107 @@ export default function AdminFullControl() {
     maxUploadSize: 50,
     sessionTimeout: 30,
     passwordMinLength: 8,
-    twoFactorAuth: true
+    twoFactorAuth: false
   });
 
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data: any = await fetchAdminSettings();
+
+      setSettings((prev) => ({
+        ...prev,
+        siteName: data?.general?.siteName ?? prev.siteName,
+        maintenanceMode: data?.general?.maintenance ?? prev.maintenanceMode,
+
+        emailNotifications: data?.notifications?.emailNotifications ?? prev.emailNotifications,
+        smsNotifications: data?.notifications?.smsNotifications ?? prev.smsNotifications,
+        pushNotifications: data?.notifications?.pushNotifications ?? prev.pushNotifications,
+
+        sessionTimeout: data?.security?.sessionTimeout ?? prev.sessionTimeout,
+        passwordMinLength: data?.security?.passwordMinLength ?? prev.passwordMinLength,
+        twoFactorAuth: data?.security?.twoFactorAuth ?? prev.twoFactorAuth,
+
+        siteDescription: data?.advanced?.siteDescription ?? prev.siteDescription,
+        debugMode: data?.advanced?.debugMode ?? prev.debugMode,
+        cacheEnabled: data?.advanced?.cacheEnabled ?? prev.cacheEnabled,
+        apiEnabled: data?.advanced?.apiEnabled ?? prev.apiEnabled,
+        analyticsEnabled: data?.advanced?.analyticsEnabled ?? prev.analyticsEnabled,
+        backupFrequency: data?.advanced?.backupFrequency ?? prev.backupFrequency,
+        maxUploadSize: data?.advanced?.maxUploadSize ?? prev.maxUploadSize
+      }));
+    } catch (e) {
+      console.error('Failed to load full control settings:', e);
+      setError('فشل تحميل الإعدادات');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const handleSave = async () => {
-    setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setSaving(false);
+    try {
+      setSaving(true);
+      setError(null);
+      const updated: any = await updateAdminSettings({
+        general: {
+          siteName: settings.siteName,
+          maintenance: settings.maintenanceMode
+        } as any,
+        notifications: {
+          emailNotifications: settings.emailNotifications,
+          smsNotifications: settings.smsNotifications,
+          pushNotifications: settings.pushNotifications
+        } as any,
+        security: {
+          sessionTimeout: settings.sessionTimeout,
+          passwordMinLength: settings.passwordMinLength,
+          twoFactorAuth: settings.twoFactorAuth
+        } as any,
+        advanced: {
+          siteDescription: settings.siteDescription,
+          debugMode: settings.debugMode,
+          cacheEnabled: settings.cacheEnabled,
+          apiEnabled: settings.apiEnabled,
+          analyticsEnabled: settings.analyticsEnabled,
+          backupFrequency: settings.backupFrequency,
+          maxUploadSize: settings.maxUploadSize
+        } as any
+      });
+
+      // refresh local state from server response to keep it canonical
+      setSettings((prev) => ({
+        ...prev,
+        siteName: updated?.general?.siteName ?? prev.siteName,
+        maintenanceMode: updated?.general?.maintenance ?? prev.maintenanceMode,
+        emailNotifications: updated?.notifications?.emailNotifications ?? prev.emailNotifications,
+        smsNotifications: updated?.notifications?.smsNotifications ?? prev.smsNotifications,
+        pushNotifications: updated?.notifications?.pushNotifications ?? prev.pushNotifications,
+        sessionTimeout: updated?.security?.sessionTimeout ?? prev.sessionTimeout,
+        passwordMinLength: updated?.security?.passwordMinLength ?? prev.passwordMinLength,
+        twoFactorAuth: updated?.security?.twoFactorAuth ?? prev.twoFactorAuth,
+        siteDescription: updated?.advanced?.siteDescription ?? prev.siteDescription,
+        debugMode: updated?.advanced?.debugMode ?? prev.debugMode,
+        cacheEnabled: updated?.advanced?.cacheEnabled ?? prev.cacheEnabled,
+        apiEnabled: updated?.advanced?.apiEnabled ?? prev.apiEnabled,
+        analyticsEnabled: updated?.advanced?.analyticsEnabled ?? prev.analyticsEnabled,
+        backupFrequency: updated?.advanced?.backupFrequency ?? prev.backupFrequency,
+        maxUploadSize: updated?.advanced?.maxUploadSize ?? prev.maxUploadSize
+      }));
+    } catch (e: any) {
+      console.error('Failed to save full control settings:', e);
+      setError(e?.message || 'فشل حفظ الإعدادات');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -54,6 +147,19 @@ export default function AdminFullControl() {
         </div>
       </div>
 
+      {loading ? (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل الإعدادات...
+          </div>
+        </div>
+      ) : error ? (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+          </div>
+        </div>
+      ) : (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
@@ -145,6 +251,7 @@ export default function AdminFullControl() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

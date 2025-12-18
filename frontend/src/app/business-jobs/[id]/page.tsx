@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   ArrowLeft, MapPin, Clock, DollarSign, Calendar, 
   Building, Users, Briefcase, Heart, ExternalLink,
   Phone, Mail, Send, CheckCircle, AlertCircle, Star
 } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 interface Job {
   id: string;
@@ -121,6 +121,36 @@ export default function JobDetailPage() {
     return typeMap[type as keyof typeof typeMap] || type;
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-600">جاري تحميل الوظيفة...</div>
+      </div>
+    );
+  }
+
+  if (!job) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <Link href="/business-jobs" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition">
+                <ArrowLeft className="w-5 h-5" />
+                العودة للوظائف
+              </Link>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-700">
+            الوظيفة غير موجودة
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -161,8 +191,8 @@ export default function JobDetailPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">التقدم لوظيفة {mockJob.title}</h2>
-              <p className="text-gray-600 mt-1">في {mockJob.company}</p>
+              <h2 className="text-2xl font-bold text-gray-900">التقدم لوظيفة {job.title}</h2>
+              <p className="text-gray-600 mt-1">في {job.company}</p>
             </div>
             
             <form onSubmit={handleSubmitApplication} className="p-6 space-y-6">
@@ -297,52 +327,52 @@ export default function JobDetailPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-start gap-4 mb-6">
                 <img
-                  src={mockJob.logo}
-                  alt={mockJob.company}
+                  src={job.logo}
+                  alt={job.company}
                   className="w-20 h-20 rounded-xl object-cover"
                 />
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center gap-2 mb-3">
-                    {mockJob.urgent && (
+                    {job.urgent && (
                       <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold">
                         عاجل
                       </span>
                     )}
-                    {mockJob.featured && (
+                    {job.featured && (
                       <span className="bg-ray-gold text-slate-900 px-3 py-1 rounded-full text-sm font-bold">
                         مميز
                       </span>
                     )}
                     <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-medium">
-                      {mockJob.category}
+                      {job.category}
                     </span>
                   </div>
                   
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{mockJob.title}</h1>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">{job.title}</h1>
                   <div className="flex items-center gap-4 text-gray-600 mb-4">
                     <div className="flex items-center gap-1">
                       <Building className="w-5 h-5" />
-                      <span className="font-medium">{mockJob.company}</span>
+                      <span className="font-medium">{job.company}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="w-5 h-5 text-yellow-500" />
-                      <span className="font-medium">{mockJob.rating}</span>
-                      <span>({mockJob.reviews} تقييم)</span>
+                      <span className="font-medium">{job.rating}</span>
+                      <span>({job.reviews} تقييم)</span>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                     <div className="flex items-center gap-2 text-gray-600">
                       <MapPin className="w-4 h-4" />
-                      {mockJob.location}
+                      {job.location}
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <Clock className="w-4 h-4" />
-                      {getTypeLabel(mockJob.type)}
+                      {getTypeLabel(job.type)}
                     </div>
                     <div className="flex items-center gap-2 text-green-600 font-medium">
                       <DollarSign className="w-4 h-4" />
-                      {mockJob.salary}
+                      {job.salary}
                     </div>
                   </div>
                 </div>
@@ -352,7 +382,7 @@ export default function JobDetailPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     <Calendar className="w-4 h-4" />
-                    {mockJob.posted}
+                    {job.posted}
                   </div>
                   
                   <div className="flex gap-3">
@@ -375,7 +405,7 @@ export default function JobDetailPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">وصف الوظيفة</h2>
               <p className="text-gray-700 leading-relaxed">
-                {mockJob.description}
+                {job.description}
               </p>
             </div>
 
@@ -383,7 +413,7 @@ export default function JobDetailPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">المهام والمسؤوليات</h2>
               <ul className="space-y-3">
-                {mockJob.responsibilities.map((responsibility, idx) => (
+                {job.responsibilities.map((responsibility, idx) => (
                   <li key={idx} className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{responsibility}</span>
@@ -396,7 +426,7 @@ export default function JobDetailPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">المتطلبات</h2>
               <ul className="space-y-3">
-                {mockJob.requirements.map((requirement, idx) => (
+                {job.requirements.map((requirement, idx) => (
                   <li key={idx} className="flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{requirement}</span>
@@ -409,7 +439,7 @@ export default function JobDetailPage() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">المميزات وال benefits</h2>
               <ul className="space-y-3">
-                {mockJob.benefits.map((benefit, idx) => (
+                {job.benefits.map((benefit, idx) => (
                   <li key={idx} className="flex items-start gap-3">
                     <CheckCircle className="w-5 h-5 text-ray-gold mt-0.5 flex-shrink-0" />
                     <span className="text-gray-700">{benefit}</span>
@@ -427,15 +457,15 @@ export default function JobDetailPage() {
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-500">حجم الشركة</p>
-                  <p className="font-medium">{mockJob.companyInfo.size}</p>
+                  <p className="font-medium">{job.companyInfo.size}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">تأسست</p>
-                  <p className="font-medium">{mockJob.companyInfo.founded}</p>
+                  <p className="font-medium">{job.companyInfo.founded}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">الصناعة</p>
-                  <p className="font-medium">{mockJob.companyInfo.industry}</p>
+                  <p className="font-medium">{job.companyInfo.industry}</p>
                 </div>
               </div>
             </div>
@@ -446,21 +476,21 @@ export default function JobDetailPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <Phone className="w-5 h-5 text-gray-400" />
-                  <a href={`tel:${mockJob.contactInfo.phone}`} className="text-blue-600 hover:underline">
-                    {mockJob.contactInfo.phone}
+                  <a href={`tel:${job.contactInfo.phone}`} className="text-blue-600 hover:underline">
+                    {job.contactInfo.phone}
                   </a>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-gray-400" />
-                  <a href={`mailto:${mockJob.contactInfo.email}`} className="text-blue-600 hover:underline">
-                    {mockJob.contactInfo.email}
+                  <a href={`mailto:${job.contactInfo.email}`} className="text-blue-600 hover:underline">
+                    {job.contactInfo.email}
                   </a>
                 </div>
-                {mockJob.contactInfo.website && (
+                {job.contactInfo.website && (
                   <div className="flex items-center gap-3">
                     <ExternalLink className="w-5 h-5 text-gray-400" />
-                    <a href={`https://${mockJob.contactInfo.website}`} className="text-blue-600 hover:underline">
-                      {mockJob.contactInfo.website}
+                    <a href={`https://${job.contactInfo.website}`} className="text-blue-600 hover:underline">
+                      {job.contactInfo.website}
                     </a>
                   </div>
                 )}

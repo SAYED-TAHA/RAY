@@ -151,15 +151,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="flex items-center gap-4 flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input type="text" placeholder="البحث..." className="pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500" />
+                <input disabled type="text" placeholder="البحث..." className="pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-400 opacity-60 cursor-not-allowed" />
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-slate-800 rounded-lg transition relative">
+              <button disabled className="p-2 rounded-lg transition relative opacity-60 cursor-not-allowed">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>
-              <button className="p-2 hover:bg-slate-800 rounded-lg transition">
+              <button disabled className="p-2 rounded-lg transition opacity-60 cursor-not-allowed">
                 <User className="w-5 h-5" />
               </button>
             </div>

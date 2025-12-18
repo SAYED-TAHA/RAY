@@ -1,17 +1,41 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, Smartphone, Tablet, Monitor, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSettings } from '../../../services/adminSettingsService';
 
 export default function AdminPreview() {
   const [device, setDevice] = useState('desktop');
   const [refreshing, setRefreshing] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
+  const [siteUrl, setSiteUrl] = useState<string>('/');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const settings = await fetchAdminSettings();
+      const url = settings?.general?.siteUrl;
+      setSiteUrl(url && typeof url === 'string' && url.trim() ? url.trim() : '/');
+    } catch (e) {
+      console.error('Failed to load admin settings for preview:', e);
+      setSiteUrl('/');
+      setError('فشل تحميل إعدادات المعاينة');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setRefreshing(false);
+    setIframeKey((k) => k + 1);
   };
 
   const getDeviceWidth = () => {
@@ -64,50 +88,22 @@ export default function AdminPreview() {
 
         <div className="flex justify-center">
           <div className={`${getDeviceWidth()} bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden`}>
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white text-center">
-              <h2 className="text-2xl font-bold mb-2">معاينة الموقع</h2>
-              <p className="text-blue-100">هذه معاينة لكيفية ظهور الموقع على {device === 'mobile' ? 'الهاتف الذكي' : device === 'tablet' ? 'الجهاز اللوحي' : 'سطح المكتب'}</p>
-            </div>
-
-            <div className="p-8">
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-3">الرئيسية</h3>
-                  <div className="bg-gray-100 rounded-lg p-6 text-center text-gray-600">
-                    <p>محتوى الصفحة الرئيسية</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-3">المنتجات</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[1, 2, 3, 4].map(i => (
-                      <div key={i} className="bg-gray-100 rounded-lg p-4 text-center text-gray-600">
-                        <p>منتج {i}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-3">الخدمات</h3>
-                  <div className="bg-gray-100 rounded-lg p-6 text-center text-gray-600">
-                    <p>محتوى الخدمات</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-3">اتصل بنا</h3>
-                  <div className="bg-gray-100 rounded-lg p-6 text-center text-gray-600">
-                    <p>نموذج الاتصال</p>
-                  </div>
-                </div>
+            {error && (
+              <div className="p-4 bg-red-50 border-b border-red-200 text-red-700 text-center">
+                {error}
+                <button onClick={load} className="ml-3 px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">إعادة المحاولة</button>
               </div>
-            </div>
-
-            <div className="bg-gray-900 text-white p-8 text-center">
-              <p className="text-sm">© 2025 راي للتقنية. جميع الحقوق محفوظة.</p>
-            </div>
+            )}
+            {loading ? (
+              <div className="p-10 text-center text-gray-600">جاري تحميل إعدادات المعاينة...</div>
+            ) : (
+              <iframe
+                key={iframeKey}
+                src={siteUrl}
+                className="w-full h-[75vh]"
+                onLoad={() => setRefreshing(false)}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Settings, Server, Database, Wifi, Globe, Shield,
   Download, Upload, RefreshCw, CheckCircle, AlertCircle,
@@ -8,49 +8,44 @@ import {
   Monitor, Zap, Activity, FileText, Save, RotateCcw
 } from 'lucide-react';
 import Link from 'next/link';
+import { fetchSystemHealth, fetchSystemLogs, SystemHealth } from '../../../services/systemService';
+
+interface SystemLogItem {
+  id: string;
+  level: string;
+  message: string;
+  timestamp: string;
+}
 
 export default function AdminSystem() {
-  const [systemInfo] = useState({
-    server: {
-      status: 'online',
-      uptime: '15 days 8 hours',
-      cpu: 45,
-      memory: 67,
-      storage: 78
-    },
-    database: {
-      status: 'connected',
-      size: '2.4 GB',
-      connections: 12,
-      queries: 1234567
-    },
-    network: {
-      status: 'connected',
-      bandwidth: '1.2 Gbps',
-      latency: '12ms'
-    }
-  });
+  const [systemInfo, setSystemInfo] = useState<SystemHealth | null>(null);
+  const [logs, setLogs] = useState<SystemLogItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [logs] = useState([
-    {
-      id: '1',
-      level: 'info',
-      message: 'تم تحديث النظام بنجاح',
-      timestamp: '2024-12-05 10:30:00'
-    },
-    {
-      id: '2',
-      level: 'warning',
-      message: 'استخدام الذاكرة مرتفع',
-      timestamp: '2024-12-05 09:15:00'
-    },
-    {
-      id: '3',
-      level: 'error',
-      message: 'فشل الاتصال بقاعدة البيانات',
-      timestamp: '2024-12-05 08:45:00'
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [health, logsRes] = await Promise.all([
+        fetchSystemHealth(),
+        fetchSystemLogs(undefined, 50)
+      ]);
+      setSystemInfo(health);
+      setLogs((logsRes?.logs || []) as SystemLogItem[]);
+    } catch (e) {
+      console.error('Failed to load system info:', e);
+      setError('فشل تحميل بيانات النظام');
+      setSystemInfo(null);
+      setLogs([]);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const getLevelBadge = (level: string) => {
     switch (level) {
@@ -77,11 +72,11 @@ export default function AdminSystem() {
               <h1 className="text-2xl font-bold text-gray-900">النظام</h1>
             </div>
             <div className="flex items-center gap-4">
-              <button className="bg-ray-blue text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2">
+              <button onClick={loadData} className="bg-ray-blue text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2">
                 <RefreshCw className="w-4 h-4" />
                 تحديث النظام
               </button>
-              <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+              <button disabled className="border border-gray-300 px-4 py-2 rounded-lg opacity-60 cursor-not-allowed transition flex items-center gap-2">
                 <Download className="w-4 h-4" />
                 نسخة احتياطية
               </button>
@@ -91,113 +86,129 @@ export default function AdminSystem() {
       </div>
 
       <div className="p-6">
-        {/* System Status */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Server className="w-5 h-5 text-gray-600" />
-                <h3 className="font-bold text-gray-900">الخادم</h3>
-              </div>
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            </div>
-            <div className="space-y-3">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">المعالج</span>
-                  <span className="text-gray-900">{systemInfo.server.cpu}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-blue-600 h-2 rounded-full" style={{width: `${systemInfo.server.cpu}%`}}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">الذاكرة</span>
-                  <span className="text-gray-900">{systemInfo.server.memory}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-yellow-600 h-2 rounded-full" style={{width: `${systemInfo.server.memory}%`}}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">التخزين</span>
-                  <span className="text-gray-900">{systemInfo.server.storage}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-red-600 h-2 rounded-full" style={{width: `${systemInfo.server.storage}%`}}></div>
-                </div>
-              </div>
-            </div>
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل بيانات النظام...
           </div>
+        ) : error ? (
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+          </div>
+        ) : !systemInfo ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            لا توجد بيانات
+          </div>
+        ) : (
+          <>
+            {/* System Status */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Server className="w-5 h-5 text-gray-600" />
+                    <h3 className="font-bold text-gray-900">الخادم</h3>
+                  </div>
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">المعالج</span>
+                      <span className="text-gray-900">{systemInfo.server.cpu}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${systemInfo.server.cpu}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">الذاكرة</span>
+                      <span className="text-gray-900">{systemInfo.server.memory}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-yellow-600 h-2 rounded-full" style={{ width: `${systemInfo.server.memory}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">التخزين</span>
+                      <span className="text-gray-900">{systemInfo.server.storage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-red-600 h-2 rounded-full" style={{ width: `${systemInfo.server.storage}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Database className="w-5 h-5 text-gray-600" />
-                <h3 className="font-bold text-gray-900">قاعدة البيانات</h3>
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-5 h-5 text-gray-600" />
+                    <h3 className="font-bold text-gray-900">قاعدة البيانات</h3>
+                  </div>
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">الحالة</span>
+                    <span className="text-green-600 font-medium">متصلة</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">الحجم</span>
+                    <span className="text-gray-900">{systemInfo.database.size}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">الاستعلامات</span>
+                    <span className="text-gray-900">{systemInfo.database.queries.toLocaleString()}</span>
+                  </div>
+                </div>
               </div>
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">الحالة</span>
-                <span className="text-green-600 font-medium">متصلة</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">الحجم</span>
-                <span className="text-gray-900">{systemInfo.database.size}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">الاستعلامات</span>
-                <span className="text-gray-900">{systemInfo.database.queries.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Wifi className="w-5 h-5 text-gray-600" />
-                <h3 className="font-bold text-gray-900">الشبكة</h3>
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Wifi className="w-5 h-5 text-gray-600" />
+                    <h3 className="font-bold text-gray-900">الشبكة</h3>
+                  </div>
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">الحالة</span>
+                    <span className="text-green-600 font-medium">متصلة</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">النطاق الترددي</span>
+                    <span className="text-gray-900">{systemInfo.network.bandwidth}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">زمن الاستجابة</span>
+                    <span className="text-gray-900">{systemInfo.network.latency}</span>
+                  </div>
+                </div>
               </div>
-              <CheckCircle className="w-5 h-5 text-green-500" />
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">الحالة</span>
-                <span className="text-green-600 font-medium">متصلة</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">النطاق الترددي</span>
-                <span className="text-gray-900">{systemInfo.network.bandwidth}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">زمن الاستجابة</span>
-                <span className="text-gray-900">{systemInfo.network.latency}</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* System Logs */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">سجل النظام</h3>
-          <div className="space-y-2">
-            {logs.map((log) => (
-              <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
-                <span className={getLevelBadge(log.level)}>
-                  {log.level === 'info' && 'معلومات'}
-                  {log.level === 'warning' && 'تحذير'}
-                  {log.level === 'error' && 'خطأ'}
-                </span>
-                <span className="text-sm text-gray-900">{log.message}</span>
-                <span className="text-xs text-gray-500 mr-auto">{log.timestamp}</span>
+            {/* System Logs */}
+            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">سجل النظام</h3>
+              <div className="space-y-2">
+                {logs.map((log) => (
+                  <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                    <span className={getLevelBadge(log.level)}>
+                      {log.level === 'info' && 'معلومات'}
+                      {log.level === 'warning' && 'تحذير'}
+                      {log.level === 'error' && 'خطأ'}
+                    </span>
+                    <span className="text-sm text-gray-900">{log.message}</span>
+                    <span className="text-xs text-gray-500 mr-auto">{log.timestamp}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

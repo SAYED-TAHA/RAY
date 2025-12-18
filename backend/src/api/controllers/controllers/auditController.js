@@ -1,4 +1,5 @@
 import AuditLog from '../../../models/AuditLog.js';
+import AppSettings from '../../../models/AppSettings.js';
 
 export const getAuditLogs = async (req, res) => {
   try {
@@ -29,35 +30,22 @@ export const getSecurityEvents = async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
 
-    // Mock security events (in production, fetch from actual audit log)
-    const events = [
-      {
-        id: '1',
-        type: 'login',
-        user: 'أحمد محمد',
-        ip: '192.168.1.1',
-        status: 'success',
-        timestamp: new Date(Date.now() - 3600000).toISOString()
-      },
-      {
-        id: '2',
-        type: 'failed_login',
-        user: 'مجهول',
-        ip: '192.168.1.100',
-        status: 'failed',
-        timestamp: new Date(Date.now() - 1800000).toISOString()
-      },
-      {
-        id: '3',
-        type: 'password_change',
-        user: 'سارة أحمد',
-        ip: '192.168.1.2',
-        status: 'success',
-        timestamp: new Date(Date.now() - 900000).toISOString()
-      }
-    ];
+    const logs = await AuditLog.find({
+      type: { $in: ['login', 'logout', 'failed_login', 'password_change', 'permission_change'] }
+    })
+      .sort({ timestamp: -1 })
+      .limit(limit);
 
-    res.status(200).json({ events: events.slice(0, limit) });
+    const events = logs.map((l) => ({
+      id: l._id.toString(),
+      type: l.type,
+      user: l.user || 'مجهول',
+      ip: l.ip || '',
+      status: l.status || 'success',
+      timestamp: (l.timestamp || l.createdAt || new Date()).toISOString()
+    }));
+
+    res.status(200).json({ events });
   } catch (error) {
     console.error('Get security events error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -66,13 +54,17 @@ export const getSecurityEvents = async (req, res) => {
 
 export const getSecuritySettings = async (req, res) => {
   try {
-    const settings = {
-      twoFactorAuth: true,
+    const doc = await AppSettings.findOne({});
+    const settings = doc?.security || {
+      twoFactorAuth: false,
       sessionTimeout: 30,
       passwordPolicy: 'strong',
+      passwordMinLength: 8,
+      requireStrongPassword: true,
       loginAttempts: 5,
       ipWhitelist: false,
       auditLog: true,
+      autoBackup: true,
       encryptionEnabled: true,
       sslEnabled: true
     };
@@ -86,9 +78,12 @@ export const getSecuritySettings = async (req, res) => {
 
 export const updateSecuritySettings = async (req, res) => {
   try {
-    // In production, save to database
-    const settings = req.body;
-    res.status(200).json({ message: 'Settings updated successfully', settings });
+    const settings = await AppSettings.findOneAndUpdate(
+      {},
+      { $set: { security: req.body } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+    res.status(200).json({ message: 'Settings updated successfully', settings: settings.security });
   } catch (error) {
     console.error('Update security settings error:', error);
     res.status(500).json({ message: 'Internal server error' });

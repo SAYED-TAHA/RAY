@@ -23,67 +23,7 @@ interface ContentItem {
 }
 
 export default function AdminContent() {
-  const [content] = useState<ContentItem[]>([
-    {
-      id: '1',
-      title: 'دليل استخدام منصة راي',
-      type: 'article',
-      category: 'دليل',
-      status: 'published',
-      views: 1234,
-      created: '2024-11-01',
-      modified: '2024-12-01',
-      author: 'أحمد محمد'
-    },
-    {
-      id: '2',
-      title: 'شعار راي الرسمي',
-      type: 'image',
-      category: 'علامات تجارية',
-      status: 'published',
-      views: 567,
-      created: '2024-10-15',
-      modified: '2024-10-15',
-      size: '2.4 MB',
-      author: 'فريق التصميم'
-    },
-    {
-      id: '3',
-      title: 'فيديو تعريفي للمنصة',
-      type: 'video',
-      category: 'فيديوهات',
-      status: 'published',
-      views: 890,
-      created: '2024-10-20',
-      modified: '2024-11-28',
-      duration: '3:45',
-      author: 'فريق الإنتاج'
-    },
-    {
-      id: '4',
-      title: 'ملف صوتي إرشادي',
-      type: 'audio',
-      category: 'صوتيات',
-      status: 'draft',
-      views: 234,
-      created: '2024-11-10',
-      modified: '2024-11-25',
-      duration: '5:20',
-      author: 'سارة أحمد'
-    },
-    {
-      id: '5',
-      title: 'شروط وأحكام الخدمة',
-      type: 'document',
-      category: 'قانوني',
-      status: 'published',
-      views: 3456,
-      created: '2024-09-01',
-      modified: '2024-11-30',
-      size: '1.2 MB',
-      author: 'الفريق القانوني'
-    }
-  ]);
+  const content: ContentItem[] = [];
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
@@ -173,11 +113,11 @@ export default function AdminContent() {
               <h1 className="text-2xl font-bold text-gray-900">المحتوى</h1>
             </div>
             <div className="flex items-center gap-4">
-              <button className="bg-ray-blue text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2">
+              <button disabled className="bg-ray-blue text-white px-4 py-2 rounded-lg opacity-60 cursor-not-allowed flex items-center gap-2">
                 <Plus className="w-4 h-4" />
                 إضافة محتوى
               </button>
-              <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+              <button disabled className="border border-gray-300 px-4 py-2 rounded-lg opacity-60 cursor-not-allowed flex items-center gap-2">
                 <Upload className="w-4 h-4" />
                 رفع ملفات
               </button>
@@ -237,7 +177,7 @@ export default function AdminContent() {
               <option value="archived">مؤرشف</option>
             </select>
             
-            <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+            <button disabled className="border border-gray-300 px-4 py-2 rounded-lg opacity-60 cursor-not-allowed flex items-center gap-2">
               <Filter className="w-4 h-4" />
               فلاتر متقدمة
             </button>
@@ -275,62 +215,70 @@ export default function AdminContent() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredContent.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="p-2 bg-gray-100 rounded-lg ml-3">
-                          {getTypeIcon(item.type)}
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{item.title}</div>
-                          <div className="text-sm text-gray-500">{item.category}</div>
-                          {item.duration && (
-                            <div className="text-xs text-gray-400">المدة: {item.duration}</div>
-                          )}
-                          {item.size && (
-                            <div className="text-xs text-gray-400">الحجم: {item.size}</div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={getTypeBadge(item.type)}>
-                        {getTypeLabel(item.type)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={getStatusBadge(item.status)}>
-                        {getStatusLabel(item.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.views.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.author}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div>
-                        <div>إنشاء: {item.created}</div>
-                        <div>تعديل: {item.modified}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center gap-2">
-                        <button className="text-ray-blue hover:text-blue-600 transition">
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button className="text-gray-600 hover:text-gray-900 transition">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button className="text-red-600 hover:text-red-700 transition">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                {filteredContent.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-600">
+                      لا يوجد محتوى حالياً. سيتم تفعيل إدارة المحتوى عند ربطها بقاعدة البيانات.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredContent.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50 transition">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="p-2 bg-gray-100 rounded-lg ml-3">
+                            {getTypeIcon(item.type)}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{item.title}</div>
+                            <div className="text-sm text-gray-500">{item.category}</div>
+                            {item.duration && (
+                              <div className="text-xs text-gray-400">المدة: {item.duration}</div>
+                            )}
+                            {item.size && (
+                              <div className="text-xs text-gray-400">الحجم: {item.size}</div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={getTypeBadge(item.type)}>
+                          {getTypeLabel(item.type)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={getStatusBadge(item.status)}>
+                          {getStatusLabel(item.status)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {item.views.toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.author}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div>
+                          <div>إنشاء: {item.created}</div>
+                          <div>تعديل: {item.modified}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <button disabled className="text-ray-blue opacity-60 cursor-not-allowed transition">
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button disabled className="text-gray-600 opacity-60 cursor-not-allowed transition">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button disabled className="text-red-600 opacity-60 cursor-not-allowed transition">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

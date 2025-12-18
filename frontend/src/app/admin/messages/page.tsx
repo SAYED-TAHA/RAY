@@ -2,56 +2,56 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  MessageSquare, Search, Filter, Download, Eye, Edit, Trash2,
-  Send, Reply, Forward, Star, Clock, CheckCircle, CheckCheck,
-  User, Mail, Phone, Calendar, AlertCircle, Archive,
-  Plus, RefreshCw, Paperclip, Smile, Mic, Camera, Image,
-  Users, Settings, Bell, X, Check, ChevronDown, MoreVertical, Loader
+  MessageSquare, Search,
+  Send, Reply, Forward,
+  User, Archive,
+  Plus, RefreshCw, Paperclip, Smile, Image,
+  MoreVertical, Loader
 } from 'lucide-react';
 import Link from 'next/link';
-
-interface Message {
-  id: string;
-  sender: string;
-  email: string;
-  phone: string;
-  subject: string;
-  message: string;
-  date: string;
-  status: string;
-  priority: string;
-  category: string;
-  attachments: number;
-}
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { fetchAdminMessages, AdminMessage } from '../../../services/adminMessagesService';
 
 export default function AdminMessages() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [messages, setMessages] = useState<AdminMessage[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<AdminMessage | null>(null);
   const [replyText, setReplyText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchMessages = async () => {
+    const load = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_URL}/api/admin/messages`);
-        if (response.ok) {
-          const data = await response.json();
-          setMessages(data);
-        }
-      } catch (error) {
-        console.error('خطأ في جلب الرسائل:', error);
+        setError(null);
+        const data = await fetchAdminMessages(200);
+        setMessages(data);
+      } catch (e) {
+        console.error('خطأ في جلب الرسائل:', e);
+        setMessages([]);
+        setError('فشل تحميل الرسائل');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMessages();
+    load();
   }, []);
+
+  const handleRefresh = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await fetchAdminMessages(200);
+      setMessages(data);
+    } catch (e) {
+      console.error('خطأ في تحديث الرسائل:', e);
+      setError('فشل تحديث الرسائل');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -61,6 +61,24 @@ export default function AdminMessages() {
             <div className="flex items-center gap-3">
               <Loader className="w-6 h-6 animate-spin text-blue-600" />
               <span className="text-gray-600">جاري تحميل الرسائل...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <div className="mt-4">
+              <button onClick={handleRefresh} className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                <RefreshCw className="w-4 h-4" />
+                إعادة المحاولة
+              </button>
             </div>
           </div>
         </div>
@@ -173,7 +191,11 @@ export default function AdminMessages() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <button onClick={handleRefresh} className="flex items-center gap-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                <RefreshCw className="w-4 h-4" />
+                تحديث
+              </button>
+              <button disabled className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                 <Plus className="w-4 h-4" />
                 رسالة جديدة
               </button>
@@ -306,28 +328,21 @@ export default function AdminMessages() {
                   {selectedMessage.attachments > 0 && (
                     <div className="mb-6">
                       <h5 className="text-sm font-medium text-gray-900 mb-2">المرفقات</h5>
-                      <div className="space-y-2">
-                        {[...Array(selectedMessage.attachments)].map((_, i) => (
-                          <div key={i} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                            <Paperclip className="w-4 h-4 text-gray-600" />
-                            <span className="text-sm text-gray-700">مرفق {i + 1}.pdf</span>
-                          </div>
-                        ))}
-                      </div>
+                      <div className="text-sm text-gray-600">عدد المرفقات: {selectedMessage.attachments}</div>
                     </div>
                   )}
                   
                   {/* Quick Actions */}
                   <div className="flex gap-2 mb-6">
-                    <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <button disabled className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                       <Reply className="w-4 h-4" />
                       رد
                     </button>
-                    <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                    <button disabled className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg opacity-60 cursor-not-allowed">
                       <Forward className="w-4 h-4" />
                       تحويل
                     </button>
-                    <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">
+                    <button disabled className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg opacity-60 cursor-not-allowed">
                       <Archive className="w-4 h-4" />
                       أرشفة
                     </button>
@@ -347,18 +362,18 @@ export default function AdminMessages() {
                       
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                          <button disabled className="p-2 rounded-lg opacity-60 cursor-not-allowed">
                             <Paperclip className="w-4 h-4 text-gray-600" />
                           </button>
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                          <button disabled className="p-2 rounded-lg opacity-60 cursor-not-allowed">
                             <Image className="w-4 h-4 text-gray-600" />
                           </button>
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition">
+                          <button disabled className="p-2 rounded-lg opacity-60 cursor-not-allowed">
                             <Smile className="w-4 h-4 text-gray-600" />
                           </button>
                         </div>
                         
-                        <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        <button disabled className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                           <Send className="w-4 h-4" />
                           إرسال
                         </button>

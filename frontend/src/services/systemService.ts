@@ -1,5 +1,19 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+const getAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const storedTokens = localStorage.getItem('authTokens');
+  if (storedTokens) {
+    try {
+      const parsed = JSON.parse(storedTokens);
+      if (parsed?.accessToken) return parsed.accessToken;
+    } catch {
+      // ignore
+    }
+  }
+  return localStorage.getItem('authToken');
+};
+
 export interface SystemHealth {
   server: {
     status: string;
@@ -40,7 +54,7 @@ export interface SystemStats {
 
 export const fetchSystemHealth = async () => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -59,7 +73,7 @@ export const fetchSystemLogs = async (level?: string, limit?: number) => {
     if (level) params.append('level', level);
     if (limit) params.append('limit', limit.toString());
 
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -74,7 +88,7 @@ export const fetchSystemLogs = async (level?: string, limit?: number) => {
 
 export const fetchSystemStats = async () => {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = getAccessToken();
     const headers: HeadersInit = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 

@@ -1,49 +1,107 @@
 import express from 'express';
-import merchantsData from '../../data/merchantsData.js';
+import DirectoryMerchant from '../../models/DirectoryMerchant.js';
 
 const router = express.Router();
 
-// بيانات المتاجر (يمكن استبدالها بـ MongoDB لاحقاً)
-// بيانات المتاجر (يمكن استبدالها بـ MongoDB لاحقاً)
-
-// جلب متجر واحد
-router.get('/:id', (req, res) => {
-  try {
-    const merchant = merchantsData[req.params.id];
-    if (!merchant) {
-      return res.status(404).json({ error: 'المتجر غير موجود' });
-    }
-    res.json(merchant);
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في جلب بيانات المتجر' });
-  }
-});
-
 // جلب المتاجر حسب الفئة (للتسوق)
 router.get('/shops', (req, res) => {
-  try {
-    const category = req.query.category;
-    let shops = Object.values(merchantsData);
-    
-    if (category === 'shopping') {
-      shops = shops.filter(shop => 
-        ['supermarket', 'retail'].includes(shop.category)
-      );
+  (async () => {
+    try {
+      const category = req.query.category;
+      const filter = {};
+
+      if (category === 'shopping') {
+        filter.category = { $in: ['supermarket', 'retail'] };
+      }
+
+      const shops = await DirectoryMerchant.find(filter).sort({ createdAt: -1 });
+      res.json(shops);
+    } catch (error) {
+      console.error('Get shops error:', error);
+      res.status(500).json({ error: 'خطأ في جلب المتاجر' });
     }
-    
-    res.json(shops);
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في جلب المتاجر' });
-  }
+  })();
 });
 
 // جلب جميع المتاجر
 router.get('/', (req, res) => {
-  try {
-    res.json(Object.values(merchantsData));
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في جلب المتاجر' });
-  }
+  (async () => {
+    try {
+      const filter = {};
+      if (req.query.category) {
+        filter.category = req.query.category;
+      }
+      const merchants = await DirectoryMerchant.find(filter).sort({ createdAt: -1 });
+      res.json(merchants);
+    } catch (error) {
+      console.error('Get merchants error:', error);
+      res.status(500).json({ error: 'خطأ في جلب المتاجر' });
+    }
+  })();
+});
+
+// جلب متجر واحد
+router.get('/:id', (req, res) => {
+  (async () => {
+    try {
+      const merchant = await DirectoryMerchant.findById(req.params.id);
+      if (!merchant) {
+        return res.status(404).json({ error: 'المتجر غير موجود' });
+      }
+      res.json(merchant);
+    } catch (error) {
+      console.error('Get merchant error:', error);
+      res.status(500).json({ error: 'خطأ في جلب بيانات المتجر' });
+    }
+  })();
+});
+
+// جلب عروض المتجر
+router.get('/:id/offers', (req, res) => {
+  (async () => {
+    try {
+      const merchant = await DirectoryMerchant.findById(req.params.id).select('offers');
+      if (!merchant) {
+        return res.status(404).json({ error: 'المتجر غير موجود' });
+      }
+      res.json(merchant.offers || []);
+    } catch (error) {
+      console.error('Get merchant offers error:', error);
+      res.status(500).json({ error: 'خطأ في جلب عروض المتجر' });
+    }
+  })();
+});
+
+// جلب منتجات الخصومات للمتجر
+router.get('/:id/discounts', (req, res) => {
+  (async () => {
+    try {
+      const merchant = await DirectoryMerchant.findById(req.params.id).select('discounts');
+      if (!merchant) {
+        return res.status(404).json({ error: 'المتجر غير موجود' });
+      }
+      res.json(merchant.discounts || []);
+    } catch (error) {
+      console.error('Get merchant discounts error:', error);
+      res.status(500).json({ error: 'خطأ في جلب المنتجات المخفضة' });
+    }
+  })();
+});
+
+// جلب طاولات المطعم
+router.get('/:id/tables', (req, res) => {
+  (async () => {
+    try {
+      const merchant = await DirectoryMerchant.findById(req.params.id).select('tables');
+      if (!merchant) {
+        return res.status(404).json({ error: 'المتجر غير موجود' });
+      }
+      res.json(merchant.tables || []);
+    } catch (error) {
+      console.error('Get merchant tables error:', error);
+      res.status(500).json({ error: 'خطأ في جلب الطاولات' });
+    }
+  })();
 });
 
 export default router;

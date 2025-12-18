@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Users, Search, Filter, Download, Eye, Edit, Trash2,
   Mail, Phone, MapPin, Calendar, Clock, ShoppingCart,
@@ -8,6 +8,7 @@ import {
   Star, Shield, User
 } from 'lucide-react';
 import Link from 'next/link';
+import { deleteUser, fetchUsers, updateUser, User as ApiUser } from '../../../services/usersService';
 
 interface UserInterface {
   id: string;
@@ -27,76 +28,49 @@ interface UserInterface {
 }
 
 export default function AdminUsers() {
-  const [users] = useState<UserInterface[]>([
-    {
-      id: '1',
-      name: 'أحمد محمد',
-      email: 'ahmed@example.com',
-      phone: '01234567890',
-      role: 'customer',
-      status: 'active',
-      joinDate: '2024-01-15',
-      lastLogin: '2024-12-05 10:30',
-      orders: 45,
-      spent: 12500,
-      location: 'القاهرة',
-      avatar: '/api/avatar/user1',
-      rating: 4.8,
-      verified: true
-    },
-    {
-      id: '2',
-      name: 'سارة أحمد',
-      email: 'sara@example.com',
-      phone: '01123456789',
-      role: 'merchant',
-      status: 'active',
-      joinDate: '2024-02-20',
-      lastLogin: '2024-12-05 09:15',
-      orders: 0,
-      spent: 0,
-      location: 'الإسكندرية',
-      avatar: '/api/avatar/user2',
-      rating: 4.9,
-      verified: true
-    },
-    {
-      id: '3',
-      name: 'محمد علي',
-      email: 'mohammed@example.com',
-      phone: '01098765432',
-      role: 'customer',
-      status: 'inactive',
-      joinDate: '2024-03-10',
-      lastLogin: '2024-11-20',
-      orders: 12,
-      spent: 3400,
-      location: 'الجيزة',
-      avatar: '/api/avatar/user3',
-      rating: 4.5,
-      verified: false
-    },
-    {
-      id: '4',
-      name: 'مريم خالد',
-      email: 'mariam@example.com',
-      phone: '01234567891',
-      role: 'admin',
-      status: 'active',
-      joinDate: '2023-12-01',
-      lastLogin: '2024-12-05 11:00',
-      orders: 0,
-      spent: 0,
-      location: 'القاهرة',
-      avatar: '/api/avatar/user4',
-      rating: 5.0,
-      verified: true
-    }
-  ]);
+  const [users, setUsers] = useState<UserInterface[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+
+  const mapApiUser = (u: ApiUser): UserInterface => {
+    const id = (u as any).id || u._id;
+    return {
+      id: String(id),
+      name: u.name,
+      email: u.email,
+      phone: u.phone || '',
+      role: u.role,
+      status: (u.status as any) || 'inactive',
+      joinDate: u.joinDate || '',
+      lastLogin: u.lastLogin || '',
+      orders: u.orders || 0,
+      spent: u.spent || 0,
+      location: u.location || '',
+      avatar: u.avatar,
+      rating: u.rating,
+      verified: Boolean(u.verified)
+    };
+  };
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchUsers({ limit: 200 });
+      setUsers((data.users || []).map(mapApiUser));
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      setUsers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,6 +126,34 @@ export default function AdminUsers() {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
+    try {
+      await deleteUser(id);
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Failed to delete user:', error);
+      alert(error?.message || 'فشل حذف المستخدم');
+    }
+  };
+
+  const handleEdit = async (user: UserInterface) => {
+    const name = window.prompt('الاسم:', user.name);
+    if (!name) return;
+    const roleInput = window.prompt('الدور: admin / merchant / customer', user.role);
+    const role = (roleInput === 'admin' || roleInput === 'merchant' || roleInput === 'customer' ? roleInput : user.role) as any;
+    const statusInput = window.prompt('الحالة: active / inactive / suspended', user.status);
+    const status = (statusInput === 'active' || statusInput === 'inactive' || statusInput === 'suspended' ? statusInput : user.status) as any;
+
+    try {
+      await updateUser(user.id, { name, role, status });
+      await loadUsers();
+    } catch (error: any) {
+      console.error('Failed to update user:', error);
+      alert(error?.message || 'فشل تعديل المستخدم');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -169,11 +171,11 @@ export default function AdminUsers() {
             </div>
             
             <div className="flex items-center gap-4">
-              <button className="bg-ray-blue text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2">
+              <button disabled className="bg-ray-blue text-white px-4 py-2 rounded-lg opacity-60 cursor-not-allowed transition flex items-center gap-2">
                 <UserPlus className="w-4 h-4" />
                 إضافة مستخدم
               </button>
-              <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+              <button disabled className="border border-gray-300 px-4 py-2 rounded-lg opacity-60 cursor-not-allowed transition flex items-center gap-2">
                 <Download className="w-4 h-4" />
                 تصدير
               </button>
@@ -219,7 +221,7 @@ export default function AdminUsers() {
               <option value="suspended">موقوف</option>
             </select>
             
-            <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+            <button disabled className="border border-gray-300 px-4 py-2 rounded-lg opacity-60 cursor-not-allowed transition flex items-center gap-2">
               <Filter className="w-4 h-4" />
               فلاتر متقدمة
             </button>
@@ -231,6 +233,9 @@ export default function AdminUsers() {
       <div className="p-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
+            {loading ? (
+              <div className="p-10 text-center text-gray-600">جاري تحميل المستخدمين...</div>
+            ) : (
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -262,7 +267,7 @@ export default function AdminUsers() {
                   <tr key={user.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-10 h-10flare rounded-full bg-gray-200 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                           <User className="w-5 h-5 text-gray-600" />
                         </div>
                         <div className="mr-3">
@@ -298,13 +303,13 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
-                        <button className="text-ray-blue hover:text-blue-600 transition">
+                        <button disabled className="text-ray-blue opacity-60 cursor-not-allowed transition">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button className="text-gray-600 hover:text-gray-900 transition">
+                        <button onClick={() => handleEdit(user)} className="text-gray-600 hover:text-gray-900 transition">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button className="text-red-600 hover:text-red-700 transition">
+                        <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:text-red-700 transition">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -313,6 +318,7 @@ export default function AdminUsers() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </div>
       </div>

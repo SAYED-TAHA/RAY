@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   CreditCard, DollarSign, TrendingUp, TrendingDown, Search, Filter,
   Download, Eye, CheckCircle, XCircle, AlertCircle, Calendar,
@@ -9,74 +9,101 @@ import {
   Banknote, Receipt, Gift, Percent, ArrowUpDown
 } from 'lucide-react';
 import Link from 'next/link';
+import { fetchOrders } from '../../../services/ordersService';
 
 export default function AdminPayments() {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    pendingPayments: 0,
+    completedPayments: 0,
+    failedPayments: 0,
+    refundRequests: 0,
+    averageOrderValue: 0
+  });
+  const [payments, setPayments] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
 
-  const stats = {
-    totalRevenue: 2456789,
-    pendingPayments: 45678,
-    completedPayments: 2345678,
-    failedPayments: 12345,
-    refundRequests: 234,
-    averageOrderValue: 456
+  const loadPayments = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchOrders({ limit: 500 });
+      const orders = data.orders;
+
+      // Extract payment info from orders
+      const paymentsList = orders.map((order: any) => ({
+        id: `PAY${order.id?.slice(-3) || '000'}`,
+        customer: order.customer?.name || order.userId || 'مستخدم',
+        email: order.customer?.email || '',
+        amount: order.pricing?.total || 0,
+        method: order.payment?.method || 'cash_on_delivery',
+        status: order.payment?.status === 'paid' ? 'completed' : (order.payment?.status === 'pending' ? 'pending' : 'failed'),
+        date: order.createdAt ? new Date(order.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        orderId: order.id,
+        fee: (order.pricing?.total || 0) * 0.03
+      }));
+
+      setPayments(paymentsList);
+
+      const methodMeta: Record<string, { name: string; icon: any; color: string }> = {
+        credit_card: { name: 'بطاقة ائتمان', icon: CreditCard, color: 'bg-blue-500' },
+        paypal: { name: 'PayPal', icon: Wallet, color: 'bg-yellow-500' },
+        cash_on_delivery: { name: 'الدفع عند الاستلام', icon: DollarSign, color: 'bg-green-500' },
+        bank_transfer: { name: 'تحويل بنكي', icon: Banknote, color: 'bg-purple-500' }
+      };
+
+      const methodCounts = paymentsList.reduce((acc: Record<string, number>, p: any) => {
+        const key = p.method || 'cash_on_delivery';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      const totalCount = paymentsList.length || 1;
+      const methodsList = Object.keys(methodCounts).map((key) => {
+        const meta = methodMeta[key] || { name: key, icon: Wallet, color: 'bg-gray-500' };
+        const count = methodCounts[key] || 0;
+        return {
+          name: meta.name,
+          count,
+          percentage: Math.round((count / totalCount) * 100),
+          icon: meta.icon,
+          color: meta.color
+        };
+      });
+
+      setPaymentMethods(methodsList);
+
+      // Calculate stats from real data
+      const totalRev = paymentsList.reduce((sum: number, p: any) => sum + (p.status === 'completed' ? p.amount : 0), 0);
+      const pendingPay = paymentsList.reduce((sum: number, p: any) => sum + (p.status === 'pending' ? p.amount : 0), 0);
+      const completedPay = paymentsList.reduce((sum: number, p: any) => sum + (p.status === 'completed' ? p.amount : 0), 0);
+      const failedPay = paymentsList.reduce((sum: number, p: any) => sum + (p.status === 'failed' ? p.amount : 0), 0);
+      const avgOrder = paymentsList.length > 0 ? Math.round(totalRev / paymentsList.length) : 0;
+
+      setStats({
+        totalRevenue: totalRev,
+        pendingPayments: pendingPay,
+        completedPayments: completedPay,
+        failedPayments: failedPay,
+        refundRequests: 0,
+        averageOrderValue: avgOrder
+      });
+    } catch (e: any) {
+      console.error('Failed to load payments:', e);
+      setError(e?.message || 'فشل تحميل المدفوعات');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const payments = [
-    {
-      id: 'PAY001',
-      customer: 'أحمد محمد',
-      email: 'ahmed@email.com',
-      amount: 1250,
-      method: 'credit_card',
-      status: 'completed',
-      date: '2025-12-05',
-      orderId: 'ORD001',
-      fee: 37.5
-    },
-    {
-      id: 'PAY002',
-      customer: 'سارة أحمد',
-      email: 'sara@email.com',
-      amount: 890,
-      method: 'paypal',
-      status: 'pending',
-      date: '2025-12-05',
-      orderId: 'ORD002',
-      fee: 26.7
-    },
-    {
-      id: 'PAY003',
-      customer: 'محمد علي',
-      email: 'mohammed@email.com',
-      amount: 2100,
-      method: 'cash_on_delivery',
-      status: 'completed',
-      date: '2025-12-04',
-      orderId: 'ORD003',
-      fee: 0
-    },
-    {
-      id: 'PAY004',
-      customer: 'فاطمة حسن',
-      email: 'fatima@email.com',
-      amount: 450,
-      method: 'bank_transfer',
-      status: 'failed',
-      date: '2025-12-04',
-      orderId: 'ORD004',
-      fee: 13.5
-    }
-  ];
-
-  const paymentMethods = [
-    { name: 'بطاقة ائتمان', count: 1234, percentage: 45, icon: CreditCard, color: 'bg-blue-500' },
-    { name: 'PayPal', count: 890, percentage: 32, icon: Wallet, color: 'bg-yellow-500' },
-    { name: 'الدفع عند الاستلام', count: 456, percentage: 17, icon: DollarSign, color: 'bg-green-500' },
-    { name: 'تحويل بنكي', count: 189, percentage: 6, icon: Banknote, color: 'bg-purple-500' }
-  ];
+  useEffect(() => {
+    loadPayments();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -123,6 +150,53 @@ export default function AdminPayments() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <h1 className="text-2xl font-bold text-gray-900">المدفوعات</h1>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل المدفوعات...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <h1 className="text-2xl font-bold text-gray-900">المدفوعات</h1>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <button onClick={loadPayments} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+              إعادة المحاولة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const filteredPayments = payments.filter(payment => {
+    const matchesSearch = payment.customer.includes(searchTerm) || payment.email.includes(searchTerm) || payment.id.includes(searchTerm);
+    const matchesStatus = selectedStatus === 'all' || payment.status === selectedStatus;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -140,7 +214,7 @@ export default function AdminPayments() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+              <button disabled className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg opacity-60 cursor-not-allowed">
                 <Download className="w-4 h-4" />
                 تصدير تقرير
               </button>
@@ -157,7 +231,7 @@ export default function AdminPayments() {
               <div className="p-2 bg-green-100 rounded-lg">
                 <DollarSign className="w-6 h-6 text-green-600" />
               </div>
-              <span className="text-sm text-green-600 font-medium">+12.5%</span>
+              <span className="text-sm text-green-600 font-medium">N/A</span>
             </div>
             <h3 className="text-2xl font-bold text-gray-900">{stats.totalRevenue.toLocaleString()} ج</h3>
             <p className="text-sm text-gray-600">إجمالي الإيرادات</p>
@@ -243,7 +317,7 @@ export default function AdminPayments() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-600">معدل التحويل</span>
-                  <span className="font-medium">68.5%</span>
+                  <span className="font-medium">N/A</span>
                 </div>
               </div>
             </div>
@@ -307,7 +381,7 @@ export default function AdminPayments() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {payments.map((payment) => (
+                {filteredPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{payment.id}</div>
@@ -334,10 +408,10 @@ export default function AdminPayments() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-left">
                       <div className="flex items-center gap-2">
-                        <button className="text-blue-600 hover:text-blue-900">
+                        <button disabled className="text-blue-600 opacity-60 cursor-not-allowed">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button className="text-gray-600 hover:text-gray-900">
+                        <button disabled className="text-gray-600 opacity-60 cursor-not-allowed">
                           <Receipt className="w-4 h-4" />
                         </button>
                       </div>

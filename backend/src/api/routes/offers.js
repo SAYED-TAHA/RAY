@@ -1,129 +1,118 @@
 import express from 'express';
-import merchantsData from '../../data/merchantsData.js';
+import Offer from '../../models/Offer.js';
 
 const router = express.Router();
 
-// Helper function to generate a random price
-const getRandomPrice = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-
-// Generate dynamic offers from merchants data
-const allOffers = Object.values(merchantsData).map(merchant => {
-  const price = getRandomPrice(50, 500);
-  const multiplier = 1 + Math.random() * 0.5 + 0.2; // 20-70% higher
-  const oldPrice = price * multiplier;
-  const discount = Math.round(((oldPrice - price) / oldPrice) * 100);
-
-  return {
-    id: merchant.id,
-    title: `خصم ${discount}% على ${merchant.type}`,
-    shop: merchant.name,
-    image: merchant.cover || merchant.image,
-    price: price.toFixed(2),
-    oldPrice: oldPrice.toFixed(2),
-    rating: merchant.rating,
-    tag: `خصم ${discount}%`,
-    category: merchant.category,
-  };
-});
-
-// بيانات العروض المميزة (يمكن استبدالها بـ MongoDB لاحقاً)
-const featuredOffers = allOffers.slice(0, 4);
-
 // جلب كل العروض
 router.get('/', (req, res) => {
-  try {
-    res.json(allOffers);
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في جلب العروض' });
-  }
+  (async () => {
+    try {
+      const filter = {};
+      if (req.query.featured !== undefined) {
+        filter.featured = String(req.query.featured) === 'true';
+      }
+      if (req.query.category) {
+        filter.category = req.query.category;
+      }
+      const offers = await Offer.find(filter).sort({ createdAt: -1 });
+      res.json(offers);
+    } catch (error) {
+      console.error('Get offers error:', error);
+      res.status(500).json({ error: 'خطأ في جلب العروض' });
+    }
+  })();
 });
 
 // جلب العروض المميزة
 router.get('/featured', (req, res) => {
-  try {
-    res.json(featuredOffers);
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في جلب العروض' });
-  }
+  (async () => {
+    try {
+      const offers = await Offer.find({ featured: true }).sort({ createdAt: -1 }).limit(4);
+      res.json(offers);
+    } catch (error) {
+      console.error('Get featured offers error:', error);
+      res.status(500).json({ error: 'خطأ في جلب العروض' });
+    }
+  })();
 });
 
 // جلب عرض واحد
 router.get('/:id', (req, res) => {
-  try {
-    const offer = featuredOffers.find(o => o.id === req.params.id);
-    if (!offer) {
-      return res.status(404).json({ error: 'العرض غير موجود' });
+  (async () => {
+    try {
+      const offer = await Offer.findById(req.params.id);
+      if (!offer) {
+        return res.status(404).json({ error: 'العرض غير موجود' });
+      }
+      res.json(offer);
+    } catch (error) {
+      console.error('Get offer error:', error);
+      res.status(500).json({ error: 'خطأ في جلب العرض' });
     }
-    res.json(offer);
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في جلب العرض' });
-  }
+  })();
 });
 
 // إضافة عرض جديد (للإدمن)
 router.post('/', (req, res) => {
-  try {
-    const { title, shop, image, price, oldPrice, rating, tag } = req.body;
-    
-    if (!title || !shop || !image || !price || rating === undefined) {
-      return res.status(400).json({ error: 'البيانات المطلوبة ناقصة' });
+  (async () => {
+    try {
+      const { title, shop, image, price, oldPrice, rating, tag, category, merchantId, featured } = req.body;
+
+      if (!title || !shop || !image || !price || rating === undefined) {
+        return res.status(400).json({ error: 'البيانات المطلوبة ناقصة' });
+      }
+
+      const offer = await Offer.create({
+        title,
+        shop,
+        image,
+        price,
+        oldPrice,
+        rating,
+        tag,
+        category,
+        merchantId,
+        featured: Boolean(featured)
+      });
+
+      res.status(201).json(offer);
+    } catch (error) {
+      console.error('Create offer error:', error);
+      res.status(500).json({ error: 'خطأ في إضافة العرض' });
     }
-
-    const newOffer = {
-      id: Date.now().toString(),
-      title,
-      shop,
-      image,
-      price,
-      oldPrice,
-      rating,
-      tag
-    };
-
-    featuredOffers.push(newOffer);
-    res.status(201).json(newOffer);
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في إضافة العرض' });
-  }
+  })();
 });
 
 // تحديث عرض
 router.put('/:id', (req, res) => {
-  try {
-    const offer = featuredOffers.find(o => o.id === req.params.id);
-    if (!offer) {
-      return res.status(404).json({ error: 'العرض غير موجود' });
+  (async () => {
+    try {
+      const offer = await Offer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+      if (!offer) {
+        return res.status(404).json({ error: 'العرض غير موجود' });
+      }
+      res.json(offer);
+    } catch (error) {
+      console.error('Update offer error:', error);
+      res.status(500).json({ error: 'خطأ في تحديث العرض' });
     }
-
-    const { title, shop, image, price, oldPrice, rating, tag } = req.body;
-    
-    if (title) offer.title = title;
-    if (shop) offer.shop = shop;
-    if (image) offer.image = image;
-    if (price) offer.price = price;
-    if (oldPrice) offer.oldPrice = oldPrice;
-    if (rating !== undefined) offer.rating = rating;
-    if (tag) offer.tag = tag;
-
-    res.json(offer);
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في تحديث العرض' });
-  }
+  })();
 });
 
 // حذف عرض
 router.delete('/:id', (req, res) => {
-  try {
-    const index = featuredOffers.findIndex(o => o.id === req.params.id);
-    if (index === -1) {
-      return res.status(404).json({ error: 'العرض غير موجود' });
+  (async () => {
+    try {
+      const offer = await Offer.findByIdAndDelete(req.params.id);
+      if (!offer) {
+        return res.status(404).json({ error: 'العرض غير موجود' });
+      }
+      res.json(offer);
+    } catch (error) {
+      console.error('Delete offer error:', error);
+      res.status(500).json({ error: 'خطأ في حذف العرض' });
     }
-
-    const deletedOffer = featuredOffers.splice(index, 1);
-    res.json(deletedOffer[0]);
-  } catch (error) {
-    res.status(500).json({ error: 'خطأ في حذف العرض' });
-  }
+  })();
 });
 
 export default router;

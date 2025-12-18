@@ -1,18 +1,49 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Settings, Save } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminSettings, updateAdminSettings } from '../../../services/adminSettingsService';
 
 export default function AdminAppName() {
-  const [appName, setAppName] = useState('راي للتقنية');
-  const [appDescription, setAppDescription] = useState('منصة متكاملة للخدمات الرقمية والتقنية');
+  const [appName, setAppName] = useState('');
+  const [appDescription, setAppDescription] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const settings = await fetchAdminSettings();
+        setAppName(settings?.general?.siteName || '');
+        setAppDescription(settings?.advanced?.siteDescription || '');
+      } catch (e: any) {
+        console.error('Failed to load admin settings:', e);
+        setError(e?.message || 'فشل تحميل الإعدادات');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
   const handleSave = async () => {
-    setSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setSaving(false);
+    try {
+      setSaving(true);
+      setError(null);
+      await updateAdminSettings({
+        general: { siteName: appName } as any,
+        advanced: { siteDescription: appDescription } as any
+      } as any);
+    } catch (e: any) {
+      console.error('Failed to update admin settings:', e);
+      setError(e?.message || 'فشل حفظ الإعدادات');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -29,9 +60,13 @@ export default function AdminAppName() {
                 <p className="text-sm text-gray-600">تغيير اسم وهوية التطبيق</p>
               </div>
             </div>
-            <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            <button
+              onClick={handleSave}
+              disabled={loading || saving}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
+            >
               <Save className="w-4 h-4" />
-              حفظ التغييرات
+              {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
             </button>
           </div>
         </div>
@@ -39,6 +74,13 @@ export default function AdminAppName() {
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-xl shadow-sm p-8 border border-gray-200">
+          {error && (
+            <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>
+          )}
+
+          {loading ? (
+            <div className="text-gray-600">جاري تحميل الإعدادات...</div>
+          ) : (
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">اسم التطبيق</label>
@@ -60,6 +102,7 @@ export default function AdminAppName() {
               </div>
             </div>
           </div>
+          )}
         </div>
       </div>
     </div>

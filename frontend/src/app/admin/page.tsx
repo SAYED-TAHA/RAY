@@ -37,7 +37,7 @@ export default function AdminDashboard() {
   return (
     <div className="text-center py-12">
       <h1 className="text-4xl font-bold mb-4">لوحة التحكم الرئيسية</h1>
-      <p className="text-slate-400 mb-8">مرحباً بك في لوحة التحكم - 26 صفحة متاحة</p>
+      <p className="text-slate-400 mb-8">مرحباً بك في لوحة التحكم - {menuItems.length} صفحة متاحة</p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
         {menuItems.slice(0, 12).map((item) => (
           <Link key={item.id} href={item.href} className="bg-slate-800 hover:bg-slate-700 rounded-lg p-4 transition text-left">

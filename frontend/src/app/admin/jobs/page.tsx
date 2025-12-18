@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Briefcase, Search, Filter, Download, Eye, Edit, Trash2,
   Plus, MapPin, DollarSign, Clock, Calendar, Building,
@@ -8,6 +8,7 @@ import {
   FileText, Award, Target, Zap
 } from 'lucide-react';
 import Link from 'next/link';
+import { createJob, fetchJobs } from '../../../services/jobsService';
 
 interface Job {
   id: string;
@@ -15,92 +16,81 @@ interface Job {
   department: string;
   location: string;
   type: 'full-time' | 'part-time' | 'contract' | 'internship';
-  level: 'junior' | 'mid' | 'senior' | 'lead' | 'manager';
   salary: {
     min: number;
     max: number;
     currency: string;
   };
-  status: 'active' | 'closed' | 'draft' | 'archived';
-  applicants: number;
-  views: number;
   postedDate: string;
-  closingDate: string;
   description: string;
   requirements: string[];
   benefits: string[];
   company: string;
-  remote: boolean;
   urgent: boolean;
 }
 
 export default function AdminJobs() {
-  const [jobs] = useState<Job[]>([
-    {
-      id: '1',
-      title: 'مطور واجهات أمامية senior',
-      department: 'التقنية',
-      location: 'القاهرة، مصر',
-      type: 'full-time',
-      level: 'senior',
-      salary: { min: 15000, max: 25000, currency: 'ج.م' },
-      status: 'active',
-      applicants: 45,
-      views: 1234,
-      postedDate: '2024-12-01',
-      closingDate: '2024-12-31',
-      description: 'نبحث عن مطور واجهات أمامية محترف...',
-      requirements: ['React', 'TypeScript', '5+ years experience'],
-      benefits: ['تأمين صحي', 'إجازات سنوية', 'مكافآت'],
-      company: 'راي للتقنية',
-      remote: true,
-      urgent: false
-    },
-    {
-      id: '2',
-      title: 'مدير تسويق',
-      department: 'التسويق',
-      location: 'الرياض، السعودية',
-      type: 'full-time',
-      level: 'manager',
-      salary: { min: 20000, max: 35000, currency: 'ج.م' },
-      status: 'active',
-      applicants: 23,
-      views: 890,
-      postedDate: '2024-12-02',
-      closingDate: '2024-12-25',
-      description: 'مدير تسويق لقيادة الفريق التسويقي...',
-      requirements: ['10+ years experience', 'Marketing degree'],
-      benefits: ['تأمين صحي', 'سيارة شركة', 'مكافآت أداء'],
-      company: 'راي للتسويق',
-      remote: false,
-      urgent: true
-    },
-    {
-      id: '3',
-      title: 'مصمم جرافيك',
-      department: 'التصميم',
-      location: 'دبي، الإمارات',
-      type: 'part-time',
-      level: 'mid',
-      salary: { min: 8000, max: 12000, currency: 'ج.م' },
-      status: 'closed',
-      applicants: 67,
-      views: 2345,
-      postedDate: '2024-11-15',
-      closingDate: '2024-12-01',
-      description: 'مصمم جرافيك مشاريع...',
-      requirements: ['Adobe Creative Suite', '3+ years experience'],
-      benefits: ['مرونة الوقت', 'عمل من المنزل'],
-      company: 'راي للتصميم',
-      remote: true,
-      urgent: false
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const loadJobs = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchJobs();
+      
+      // Map backend Job model to frontend interface
+      const mapped: Job[] = data.map((job: any) => {
+        // Parse salary string like "15000-20000" or "15000"
+        let salaryMin = 0;
+        let salaryMax = 0;
+        const salaryStr = job.salary || '';
+        const salaryParts = salaryStr.split('-');
+        if (salaryParts.length === 2) {
+          salaryMin = parseInt(salaryParts[0].trim()) || 0;
+          salaryMax = parseInt(salaryParts[1].trim()) || 0;
+        } else if (salaryParts.length === 1) {
+          salaryMin = parseInt(salaryParts[0].trim()) || 0;
+          salaryMax = salaryMin;
+        }
+
+        return {
+          id: job.id || job._id,
+          title: job.title,
+          department: job.category || 'عام',
+          location: job.location,
+          type: job.type,
+          salary: {
+            min: salaryMin,
+            max: salaryMax,
+            currency: 'ج.م'
+          },
+          postedDate: job.posted || new Date().toISOString().split('T')[0],
+          description: job.description,
+          requirements: job.requirements || [],
+          benefits: job.benefits || [],
+          company: job.company,
+          urgent: job.urgent || false
+        };
+      });
+      
+      setJobs(mapped);
+    } catch (e: any) {
+      console.error('Failed to load jobs:', e);
+      setError(e?.message || 'فشل تحميل الوظائف');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
 
   const filteredJobs = jobs.filter(job => {
@@ -108,11 +98,48 @@ export default function AdminJobs() {
                          job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = selectedDepartment === 'all' || job.department === selectedDepartment;
-    const matchesStatus = selectedStatus === 'all' || job.status === selectedStatus;
     const matchesType = selectedType === 'all' || job.type === selectedType;
     
-    return matchesSearch && matchesDepartment && matchesStatus && matchesType;
+    return matchesSearch && matchesDepartment && matchesType;
   });
+
+  const handleCreateJob = async () => {
+    const title = window.prompt('عنوان الوظيفة:');
+    if (!title) return;
+    const company = window.prompt('اسم الشركة:');
+    if (!company) return;
+    const location = window.prompt('الموقع:');
+    if (!location) return;
+    const typeInput = window.prompt('النوع: full-time / part-time / contract / internship', 'full-time');
+    const type = (typeInput === 'part-time' || typeInput === 'contract' || typeInput === 'internship' ? typeInput : 'full-time') as any;
+    const category = window.prompt('القسم/الفئة:', 'عام') || 'عام';
+    const salary = window.prompt('الراتب (مثال 15000-20000 أو 15000):', '');
+    const posted = new Date().toISOString().split('T')[0];
+    const description = window.prompt('وصف الوظيفة:', '') || '';
+    const urgent = window.confirm('هل الوظيفة عاجلة؟');
+
+    try {
+      setCreating(true);
+      setError(null);
+      await createJob({
+        title,
+        company,
+        location,
+        type,
+        category,
+        salary: salary || '0',
+        posted,
+        description,
+        urgent
+      });
+      await loadJobs();
+    } catch (e: any) {
+      console.error('Failed to create job:', e);
+      setError(e?.message || 'فشل إضافة الوظيفة');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -192,6 +219,43 @@ export default function AdminJobs() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">الوظائف</h1>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل الوظائف...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">الوظائف</h1>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <button onClick={loadJobs} className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+              إعادة المحاولة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -209,11 +273,11 @@ export default function AdminJobs() {
             </div>
             
             <div className="flex items-center gap-4">
-              <button className="bg-ray-blue text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition flex items-center gap-2">
+              <button onClick={handleCreateJob} disabled={creating} className="bg-ray-blue text-white px-4 py-2 rounded-lg hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed transition flex items-center gap-2">
                 <Plus className="w-4 h-4" />
                 إضافة وظيفة
               </button>
-              <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+              <button disabled className="border border-gray-300 px-4 py-2 rounded-lg opacity-60 cursor-not-allowed transition flex items-center gap-2">
                 <Download className="w-4 h-4" />
                 تصدير
               </button>
@@ -230,10 +294,10 @@ export default function AdminJobs() {
               <Briefcase className="w-6 h-6 text-green-600" />
             </div>
             <span className="text-2xl font-bold text-gray-900">
-              {jobs.filter(j => j.status === 'active').length}
+              {jobs.length}
             </span>
           </div>
-          <h3 className="text-sm text-gray-600">وظائف نشطة</h3>
+          <h3 className="text-sm text-gray-600">إجمالي الوظائف</h3>
         </div>
 
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
@@ -242,7 +306,7 @@ export default function AdminJobs() {
               <Users className="w-6 h-6 text-blue-600" />
             </div>
             <span className="text-2xl font-bold text-gray-900">
-              {jobs.reduce((sum, j) => sum + j.applicants, 0)}
+              N/A
             </span>
           </div>
           <h3 className="text-sm text-gray-600">إجمالي المتقدمين</h3>
@@ -254,7 +318,7 @@ export default function AdminJobs() {
               <Eye className="w-6 h-6 text-purple-600" />
             </div>
             <span className="text-2xl font-bold text-gray-900">
-              {jobs.reduce((sum, j) => sum + j.views, 0).toLocaleString()}
+              N/A
             </span>
           </div>
           <h3 className="text-sm text-gray-600">إجمالي المشاهدات</h3>
@@ -300,16 +364,8 @@ export default function AdminJobs() {
               <option value="المالية">المالية</option>
             </select>
             
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-ray-blue"
-            >
+            <select disabled value="all" className="px-4 py-2 border border-gray-300 rounded-lg opacity-60 cursor-not-allowed">
               <option value="all">كل الحالات</option>
-              <option value="active">نشطة</option>
-              <option value="closed">مغلقة</option>
-              <option value="draft">مسودة</option>
-              <option value="archived">مؤرشفة</option>
             </select>
             
             <select
@@ -324,7 +380,7 @@ export default function AdminJobs() {
               <option value="internship">تدريب</option>
             </select>
             
-            <button className="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center gap-2">
+            <button disabled className="border border-gray-300 px-4 py-2 rounded-lg opacity-60 cursor-not-allowed transition flex items-center gap-2">
               <Filter className="w-4 h-4" />
               فلاتر متقدمة
             </button>
@@ -346,9 +402,6 @@ export default function AdminJobs() {
                     النوع
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    المستوى
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     الراتب
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -366,7 +419,14 @@ export default function AdminJobs() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredJobs.map((job) => (
+                {filteredJobs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-600">
+                      لا توجد وظائف متاحة حالياً
+                    </td>
+                  </tr>
+                ) : (
+                  filteredJobs.map((job) => (
                   <tr key={job.id} className="hover:bg-gray-50 transition">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -379,11 +439,6 @@ export default function AdminJobs() {
                             {job.urgent && (
                               <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-bold">
                                 عاجلة
-                              </span>
-                            )}
-                            {job.remote && (
-                              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-xs font-bold">
-                                عن بعد
                               </span>
                             )}
                           </div>
@@ -400,43 +455,39 @@ export default function AdminJobs() {
                         {getTypeLabel(job.type)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={getLevelBadge(job.level)}>
-                        {getLevelLabel(job.level)}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {job.salary.min.toLocaleString()} - {job.salary.max.toLocaleString()} {job.salary.currency}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="flex items-center gap-2">
                         <Users className="w-4 h-4 text-gray-400" />
-                        {job.applicants}
+                        N/A
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={getStatusBadge(job.status)}>
-                        {getStatusLabel(job.status)}
+                      <span className={getStatusBadge('')}>
+                        N/A
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {job.closingDate}
+                      N/A
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
-                        <button className="text-ray-blue hover:text-blue-600 transition">
+                        <button disabled className="text-ray-blue opacity-60 cursor-not-allowed transition">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button className="text-gray-600 hover:text-gray-900 transition">
+                        <button disabled className="text-gray-600 opacity-60 cursor-not-allowed transition">
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button className="text-red-600 hover:text-red-700 transition">
+                        <button disabled className="text-red-600 opacity-60 cursor-not-allowed transition">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                  ))
+                )}
               </tbody>
             </table>
           </div>
