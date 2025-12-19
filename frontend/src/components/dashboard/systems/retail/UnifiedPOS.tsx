@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useTheme } from '../../../common/ThemeContext';
+import { useTheme } from '../../../common/useTheme';
 import { 
   Search, Plus, Minus, Trash2, CreditCard, Banknote, 
   ShoppingCart, Package, BarChart3, Store, Globe, Eye, EyeOff,
-  Users, DollarSign, Box, Truck, Settings, RefreshCw, Check, X,
+  Calculator, Receipt, Users, Settings, X, Save, Printer, ScanLine,
   Edit, Copy, Share2, ArrowUp, ArrowDown, MoreVertical, Bell,
   Calendar, Clock, TrendingUp, TrendingDown, AlertCircle, User,
-  Tag, ShoppingBag, Loader2, CheckCircle, ChevronUp, FileText
+  Tag, ShoppingBag, Loader2, CheckCircle, ChevronUp, FileText, DollarSign
 } from 'lucide-react';
 import { BusinessType } from '../../config';
 

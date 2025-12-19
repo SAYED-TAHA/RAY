@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, ArrowRight, ArrowLeft } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 
 const LoginPage = () => {
   const router = useRouter();

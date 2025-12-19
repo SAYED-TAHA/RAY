@@ -1,27 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
-interface MerchantData {
-  id?: string;
-  businessName: string;
-  ownerName: string;
-  email: string;
-  phone: string;
-  city: string;
-  businessType: string;
-  isLoggedIn: boolean;
-}
-
-interface MerchantContextType {
-  merchant: MerchantData | null;
-  register: (data: Omit<MerchantData, 'id' | 'isLoggedIn'>) => void;
-  login: (email: string, password: string) => boolean;
-  logout: () => void;
-  updateMerchant: (data: Partial<MerchantData>) => void;
-}
-
-const MerchantContext = createContext<MerchantContextType | undefined>(undefined);
+import { MerchantContext, MerchantData } from './merchant-context';
 
 export const MerchantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [merchant, setMerchant] = useState<MerchantData | null>(null);
@@ -92,12 +73,4 @@ export const MerchantProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       {children}
     </MerchantContext.Provider>
   );
-};
-
-export const useMerchant = () => {
-  const context = useContext(MerchantContext);
-  if (!context) {
-    throw new Error('useMerchant يجب أن يكون داخل MerchantProvider');
-  }
-  return context;
 };

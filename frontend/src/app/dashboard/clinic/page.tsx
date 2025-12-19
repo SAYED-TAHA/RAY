@@ -1,8 +1,9 @@
 "use client";
 
 import React from 'react';
-import BookingsDashboard from '@/components/dashboard/bookings/BookingsDashboard';
+import BookingsDashboard from '@/components/dashboard/systems/bookings/BookingsDashboard';
 import { useRouter } from 'next/navigation';
+import { BusinessType } from '@/components/dashboard/shared/config';
 
 export default function ClinicPage() {
   const router = useRouter();
@@ -10,7 +11,7 @@ export default function ClinicPage() {
   return (
     <BookingsDashboard 
       onLogout={() => router.push('/')} 
-      onSwitchType={(type) => router.push(`/dashboard/${type}`)}
+      onSwitchType={(type: BusinessType) => router.push(`/dashboard?type=${encodeURIComponent(type)}`)}
       type="clinic"
     />
   );

@@ -4,14 +4,14 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, Phone, ArrowRight, ArrowLeft, Store } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const SignupPage = () => {
   const router = useRouter();
   const { register } = useAuth();
-  const [type, setType] = useState<'customer' | 'merchant'>('customer');
+  const [type, setType] = useState<'user' | 'merchant'>('user');
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -77,9 +77,9 @@ const SignupPage = () => {
            {/* Type Toggle */}
            <div className="bg-gray-100 dark:bg-gray-800 p-1.5 rounded-xl flex mb-8">
               <button 
-                onClick={() => setType('customer')}
+                onClick={() => setType('user')}
                 className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                  type === 'customer' 
+                  type === 'user' 
                     ? 'bg-white dark:bg-gray-700 text-ray-black dark:text-white shadow-sm' 
                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
                 }`}

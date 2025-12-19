@@ -1,21 +1,17 @@
 'use client';
 
 import React from 'react';
-import ServicesDashboard from '@/components/dashboard/services/ServicesDashboard';
+import ServicesDashboard from '@/components/dashboard/systems/services/ServicesDashboard';
+import { useRouter } from 'next/navigation';
+import { BusinessType } from '@/components/dashboard/shared/config';
 
 export default function ServicesPage() {
-  const handleLogout = () => {
-    console.log('Logout');
-  };
-  
-  const handleSwitchType = (type: any) => {
-    console.log('Switch to:', type);
-  };
+  const router = useRouter();
 
   return (
     <ServicesDashboard 
-      onLogout={handleLogout}
-      onSwitchType={handleSwitchType}
+      onLogout={() => router.push('/')}
+      onSwitchType={(type: BusinessType) => router.push(`/dashboard?type=${encodeURIComponent(type)}`)}
     />
   );
 }

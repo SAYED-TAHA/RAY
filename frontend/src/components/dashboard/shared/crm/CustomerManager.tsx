@@ -5,7 +5,7 @@ import {
   ShoppingBag, Star, History, ChevronDown, ChevronUp,
   MessageCircle, MoreHorizontal, X, Save, Trophy, AlertCircle, CheckCircle, Clock, FileText, Tag
 } from 'lucide-react';
-import { useToast } from '../../../common/ToastContext';
+import { useToast } from '../../../common/useToast';
 
 interface OrderHistory {
   id: string;

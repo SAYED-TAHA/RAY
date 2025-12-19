@@ -1,21 +1,17 @@
 'use client';
 
 import React from 'react';
-import ContractingDashboard from '@/components/dashboard/contracting/ContractingDashboard';
+import ContractingDashboard from '@/components/dashboard/systems/contracting/ContractingDashboard';
+import { useRouter } from 'next/navigation';
+import { BusinessType } from '@/components/dashboard/shared/config';
 
 export default function ContractingPage() {
-  const handleLogout = () => {
-    console.log('Logout');
-  };
-  
-  const handleSwitchType = (type: any) => {
-    console.log('Switch to:', type);
-  };
+  const router = useRouter();
 
   return (
     <ContractingDashboard 
-      onLogout={handleLogout}
-      onSwitchType={handleSwitchType}
+      onLogout={() => router.push('/')}
+      onSwitchType={(type: BusinessType) => router.push(`/dashboard?type=${encodeURIComponent(type)}`)}
     />
   );
 }

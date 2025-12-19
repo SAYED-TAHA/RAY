@@ -2,20 +2,16 @@
 
 import React from 'react';
 import ClothingDashboard from '@/components/dashboard/systems/clothing/ClothingDashboard';
+import { useRouter } from 'next/navigation';
+import { BusinessType } from '@/components/dashboard/shared/config';
 
 export default function ClothingPage() {
-  const handleLogout = () => {
-    console.log('Logout');
-  };
-  
-  const handleSwitchType = (type: any) => {
-    console.log('Switch to:', type);
-  };
+  const router = useRouter();
 
   return (
     <ClothingDashboard 
-      onLogout={handleLogout}
-      onSwitchType={handleSwitchType}
+      onLogout={() => router.push('/')}
+      onSwitchType={(type: BusinessType) => router.push(`/dashboard?type=${encodeURIComponent(type)}`)}
     />
   );
 }

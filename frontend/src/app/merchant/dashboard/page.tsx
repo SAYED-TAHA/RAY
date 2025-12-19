@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useMerchant } from '@/context/MerchantContext';
+import { useMerchant } from '@/context/useMerchant';
 import { 
   LogOut, Store, Mail, Phone, MapPin, Building2, 
   ArrowRight, BarChart3, Settings

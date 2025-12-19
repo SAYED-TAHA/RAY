@@ -1,14 +1,59 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { HelpCircle, Search, Plus, FileText, CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminFaqs, fetchAdminSupportTickets, type AdminFAQ, type AdminSupportTicket } from '../../../services/adminHelpService';
 
 export default function AdminHelp() {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const faqs: any[] = [];
-  const supportTickets: any[] = [];
+  const [faqs, setFaqs] = useState<AdminFAQ[]>([]);
+  const [supportTickets, setSupportTickets] = useState<AdminSupportTicket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [faqsRes, ticketsRes] = await Promise.all([
+        fetchAdminFaqs({ limit: 200 }),
+        fetchAdminSupportTickets({ limit: 200 })
+      ]);
+      setFaqs(faqsRes || []);
+      setSupportTickets(ticketsRes || []);
+    } catch (e) {
+      console.error('Failed to load help data:', e);
+      setFaqs([]);
+      setSupportTickets([]);
+      setError('فشل تحميل بيانات المساعدة');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const filteredFaqs = faqs.filter((faq) => {
+    if (!searchTerm) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      String(faq.question || '').toLowerCase().includes(q) ||
+      String(faq.answer || '').toLowerCase().includes(q)
+    );
+  });
+
+  const filteredTickets = supportTickets.filter((ticket) => {
+    if (!searchTerm) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      String(ticket.title || '').toLowerCase().includes(q) ||
+      String(ticket.description || '').toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -33,6 +78,21 @@ export default function AdminHelp() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل بيانات المساعدة...
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <div className="mt-4">
+              <button onClick={load} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                إعادة المحاولة
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between">
@@ -70,13 +130,13 @@ export default function AdminHelp() {
               <Search className="absolute right-3 top-3 w-5 h-5 text-gray-400" />
               <input type="text" placeholder="بحث..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg" />
             </div>
-            {faqs.length === 0 ? (
+            {filteredFaqs.length === 0 ? (
               <div className="p-8 text-center text-gray-600 bg-gray-50 rounded-lg border border-gray-200">
                 لا توجد أسئلة شائعة حالياً. سيتم تفعيل إدارة الأسئلة الشائعة عند ربط نظام المساعدة بقاعدة البيانات.
               </div>
             ) : (
               <div className="space-y-3">
-                {faqs.map((faq: any) => (
+                {filteredFaqs.map((faq: any) => (
                   <div key={faq.id} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition">
                     <h3 className="font-medium text-gray-900">{faq.question}</h3>
                     <p className="text-xs text-gray-600 mt-1">{faq.views} مشاهدة • {faq.helpful} مفيد</p>
@@ -88,13 +148,13 @@ export default function AdminHelp() {
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-bold text-gray-900 mb-4">تذاكر الدعم</h2>
-            {supportTickets.length === 0 ? (
+            {filteredTickets.length === 0 ? (
               <div className="p-8 text-center text-gray-600 bg-gray-50 rounded-lg border border-gray-200">
                 لا توجد تذاكر دعم حالياً. سيتم إظهار التذاكر عند ربط نظام الدعم.
               </div>
             ) : (
               <div className="space-y-3">
-                {supportTickets.map((ticket: any) => (
+                {filteredTickets.map((ticket: any) => (
                   <div key={ticket.id} className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                     <div>
                       <h3 className="font-medium text-gray-900">{ticket.title}</h3>
@@ -109,6 +169,8 @@ export default function AdminHelp() {
             )}
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

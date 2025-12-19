@@ -4,14 +4,24 @@ import { DashboardConfig, BusinessType } from '../../config';
 import StatusBadge from '../../../common/StatusBadge';
 import { ArrowLeft } from 'lucide-react';
 
+type RecentRow = {
+  id: string;
+  col1?: string;
+  col2?: string;
+  col3?: string;
+  status?: string;
+  time?: string;
+};
+
 interface RecentActivityTableProps {
   config: DashboardConfig;
   currentBusinessType: BusinessType;
   theme: any;
   onNavigate: (tab: string) => void;
+  rows?: RecentRow[];
 }
 
-const RecentActivityTable: React.FC<RecentActivityTableProps> = ({ config, currentBusinessType, theme, onNavigate }) => {
+const RecentActivityTable: React.FC<RecentActivityTableProps> = ({ config, currentBusinessType, theme, onNavigate, rows }) => {
   
   const getTargetView = () => {
     const map: Record<string, string> = {
@@ -49,38 +59,44 @@ const RecentActivityTable: React.FC<RecentActivityTableProps> = ({ config, curre
         </button>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-right">
-          <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm">
-            <tr>
-              {config.tableHeaders.map((header, idx) => (
-                <th key={idx} className="p-4 font-medium whitespace-nowrap">{header}</th>
-              ))}
-              <th className="p-4 font-medium">إجراء</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {config.data.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-default">
-                <td className="p-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">{row.id}</td>
-                <td className="p-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">{row.col1}</td>
-                <td className="p-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">{row.col2}</td>
-                <td className={`p-4 font-bold ${theme.text} dark:text-gray-200 whitespace-nowrap`}>{row.col3}</td>
-                <td className="p-4 whitespace-nowrap">
-                  <StatusBadge status={row.status} />
-                </td>
-                <td className="p-4 text-gray-500 dark:text-gray-400 text-sm whitespace-nowrap">{row.time}</td>
-                <td className="p-4 whitespace-nowrap">
-                  <button 
-                    onClick={() => onNavigate(getTargetView())}
-                    className="px-4 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition shadow-sm hover:shadow active:scale-95"
-                  >
-                    تفاصيل
-                  </button>
-                </td>
+        {Array.isArray(rows) && rows.length > 0 ? (
+          <table className="w-full text-right">
+            <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm">
+              <tr>
+                {config.tableHeaders.map((header, idx) => (
+                  <th key={idx} className="p-4 font-medium whitespace-nowrap">{header}</th>
+                ))}
+                <th className="p-4 font-medium">إجراء</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {rows.map((row, idx) => (
+                <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-default">
+                  <td className="p-4 font-medium text-gray-900 dark:text-white whitespace-nowrap">{row.id}</td>
+                  <td className="p-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">{row.col1 || '-'}</td>
+                  <td className="p-4 text-gray-700 dark:text-gray-300 whitespace-nowrap">{row.col2 || '-'}</td>
+                  <td className={`p-4 font-bold ${theme.text} dark:text-gray-200 whitespace-nowrap`}>{row.col3 || '-'}</td>
+                  <td className="p-4 whitespace-nowrap">
+                    <StatusBadge status={row.status || 'unknown'} />
+                  </td>
+                  <td className="p-4 text-gray-500 dark:text-gray-400 text-sm whitespace-nowrap">{row.time || '-'}</td>
+                  <td className="p-4 whitespace-nowrap">
+                    <button 
+                      onClick={() => onNavigate(getTargetView())}
+                      className="px-4 py-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 transition shadow-sm hover:shadow active:scale-95"
+                    >
+                      تفاصيل
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="p-10 text-center text-gray-600 dark:text-gray-300">
+            لا توجد بيانات حالياً
+          </div>
+        )}
       </div>
     </div>
   );

@@ -91,7 +91,7 @@ const BookingsDashboard: React.FC<Props> = ({ onLogout, onSwitchType, type = 'cl
         return <ProfileView />;
       case 'overview':
       default:
-        return <BookingsOverview setActiveTab={setActiveTab} businessType={type} />;
+        return <BookingsOverview setActiveTab={setActiveTab} />;
     }
   };
 

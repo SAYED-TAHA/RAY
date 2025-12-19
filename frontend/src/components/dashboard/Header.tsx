@@ -2,7 +2,7 @@
 import React from 'react';
 import { Menu, Bell, Sun, Moon, Palette } from 'lucide-react';
 import { DashboardConfig, BusinessType } from './config';
-import { useTheme } from '../common/ThemeContext';
+import { useTheme } from '../common/useTheme';
 
 interface HeaderProps {
   config: DashboardConfig;

@@ -1,21 +1,17 @@
 'use client';
 
 import React from 'react';
-import CarsDashboard from '@/components/dashboard/cars/CarsDashboard';
+import CarsDashboard from '@/components/dashboard/systems/cars/CarsDashboard';
+import { useRouter } from 'next/navigation';
+import { BusinessType } from '@/components/dashboard/shared/config';
 
 export default function CarsPage() {
-  const handleLogout = () => {
-    console.log('Logout');
-  };
-  
-  const handleSwitchType = (type: any) => {
-    console.log('Switch to:', type);
-  };
+  const router = useRouter();
 
   return (
     <CarsDashboard 
-      onLogout={handleLogout}
-      onSwitchType={handleSwitchType}
+      onLogout={() => router.push('/')}
+      onSwitchType={(type: BusinessType) => router.push(`/dashboard?type=${encodeURIComponent(type)}`)}
     />
   );
 }

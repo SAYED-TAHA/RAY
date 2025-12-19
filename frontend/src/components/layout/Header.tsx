@@ -208,11 +208,9 @@ const Header: React.FC<HeaderProps> = ({
 
   const handleNavClick = (e: React.MouseEvent, view: string) => {
     e.preventDefault();
-    console.log('Header handleNavClick:', view); // Debug log
     if (onNavigate) {
       onNavigate(view);
     } else {
-      console.warn('onNavigate is not defined in Header');
     }
     setIsMenuOpen(false);
   };

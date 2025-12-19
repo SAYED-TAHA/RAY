@@ -1,51 +1,50 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import GeminiAssistant from './common/GeminiAssistant';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import Header from './layout/Header';
 import Footer from './layout/Footer';
 import MobileBottomNav from './layout/MobileBottomNav';
 import HomePage from './pages/HomePage';
-import SystemsHubWorldwide from './systems/SystemsHubWorldwide';
-import SystemActivitySelector from './systems/SystemActivitySelector';
-import SystemLanding from './systems/SystemLanding';
 import { MarketplaceProvider } from '../context/MarketplaceContext';
 import { ThemeProvider } from '../context/ThemeContext'; 
 
 // Listings
-import RestaurantListing from './listings/RestaurantListing';
-import RealEstateListing from './listings/RealEstateListing';
-import CarListing from './listings/CarListing';
-import ShoppingListing from './listings/ShoppingListing';
-import ServiceListing from './listings/ServiceListing';
-import HealthBeautyListing from './listings/HealthBeautyListing';
-import EventListing from './listings/EventListing';
+const RestaurantListing = dynamic(() => import('./listings/RestaurantListing'), { ssr: false });
+const RealEstateListing = dynamic(() => import('./listings/RealEstateListing'), { ssr: false });
+const CarListing = dynamic(() => import('./listings/CarListing'), { ssr: false });
+const ShoppingListing = dynamic(() => import('./listings/ShoppingListing'), { ssr: false });
+const ServiceListing = dynamic(() => import('./listings/ServiceListing'), { ssr: false });
+const HealthBeautyListing = dynamic(() => import('./listings/HealthBeautyListing'), { ssr: false });
+const EventListing = dynamic(() => import('./listings/EventListing'), { ssr: false });
 
-// Views
-import MerchantPublicView from './views/MerchantPublicView';
-import UserProfileView from './views/ProfileView';
-import CartView from './views/CartView';
-import CheckoutView from './views/consumer/CheckoutView';
-import FavoritesView from './views/FavoritesView';
-import NotificationsView from './views/consumer/NotificationsView';
-import SearchResultsView from './views/SearchResultsView';
-import OrderTrackingView from './views/OrderTrackingView';
-import OffersView from './views/consumer/OffersView'; 
-import AuthModal from './common/AuthModal';
+const UserProfileView = dynamic(() => import('./views/ProfileView'), { ssr: false });
+const CartView = dynamic(() => import('./views/CartView'), { ssr: false });
+const CheckoutView = dynamic(() => import('./views/consumer/CheckoutView'), { ssr: false });
+const FavoritesView = dynamic(() => import('./views/FavoritesView'), { ssr: false });
+const NotificationsView = dynamic(() => import('./views/consumer/NotificationsView'), { ssr: false });
+const SearchResultsView = dynamic(() => import('./views/SearchResultsView'), { ssr: false });
+const OrderTrackingView = dynamic(() => import('./views/OrderTrackingView'), { ssr: false });
+const OffersView = dynamic(() => import('./views/consumer/OffersView'), { ssr: false }); 
+ 
+const GeminiAssistant = dynamic(() => import('./common/GeminiAssistant'), { ssr: false });
+const AuthModal = dynamic(() => import('./common/AuthModal'), { ssr: false });
+const SystemsHubWorldwide = dynamic(() => import('./systems/SystemsHubWorldwide'), { ssr: false });
+const SystemActivitySelector = dynamic(() => import('./systems/SystemActivitySelector'), { ssr: false });
+const MerchantPublicView = dynamic(() => import('./views/MerchantPublicView'), { ssr: false });
 
-// Pages (Now as Components)
-import CategoriesPage from '../app/categories/page';
-import BlogPage from '../app/blog/page';
-import JobsPage from '../app/jobs/page';
-import LoginPage from '../app/login/page';
-import SignupPage from '../app/signup/page';
+const CategoriesPage = dynamic(() => import('../app/categories/page'), { ssr: false });
+const BlogPage = dynamic(() => import('../app/blog/page'), { ssr: false });
+const JobsPage = dynamic(() => import('../app/jobs/page'), { ssr: false });
+const LoginPage = dynamic(() => import('../app/login/page'), { ssr: false });
+const SignupPage = dynamic(() => import('../app/signup/page'), { ssr: false });
 
-// Static Views
-import AboutView from './views/AboutView';
-import ContactView from './views/ContactView';
-import HelpCenterView from './views/HelpCenterView';
-import LegalView from './views/LegalView';
+const AboutView = dynamic(() => import('./views/AboutView'), { ssr: false });
+const ContactView = dynamic(() => import('./views/ContactView'), { ssr: false });
+const HelpCenterView = dynamic(() => import('./views/HelpCenterView'), { ssr: false });
+const LegalView = dynamic(() => import('./views/LegalView'), { ssr: false });
 
 interface MarketplaceProps {
   onGoToSystems: () => void;
@@ -53,6 +52,7 @@ interface MarketplaceProps {
 }
 
 const Marketplace: React.FC<MarketplaceProps> = ({ onGoToSystems, onProductClick }) => {
+  const router = useRouter();
   // Navigation States
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedMerchant, setSelectedMerchant] = useState<any | null>(null);
@@ -62,28 +62,52 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onGoToSystems, onProductClick
   const [showWorldwideSystems, setShowWorldwideSystems] = useState(false);
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
 
-  const handleCategorySelect = (categoryId: string) => {
+  useEffect(() => {
+    const prefetch = () => {
+      try {
+        router.prefetch('/favorites');
+        router.prefetch('/notifications');
+        router.prefetch('/profile');
+        router.prefetch('/cart');
+        router.prefetch('/jobs');
+        router.prefetch('/blog');
+        router.prefetch('/help');
+        router.prefetch('/about');
+      } catch {
+      }
+    };
+
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(prefetch);
+      return;
+    }
+
+    const t = setTimeout(prefetch, 800);
+    return () => clearTimeout(t);
+  }, [router]);
+
+  const handleCategorySelect = useCallback((categoryId: string) => {
     setSelectedCategory(categoryId);
     setSelectedMerchant(null);
-    setCurrentView('category_listing'); // Helper state to show listing
+    setCurrentView('category_listing');
     window.scrollTo(0, 0);
-  };
+  }, []);
 
-  const handleMerchantSelect = (merchantData: any) => {
+  const handleMerchantSelect = useCallback((merchantData: any) => {
     setSelectedMerchant(merchantData);
     window.scrollTo(0, 0);
-  };
+  }, []);
   
-  const handleProductSelect = (id: string) => {
+  const handleProductSelect = useCallback((id: string) => {
     if (onProductClick) {
         onProductClick(id);
     } else {
         // Fallback
-        window.location.assign(`/product/${id}`);
+        router.push(`/product/${id}`);
     }
-  };
+  }, [onProductClick, router]);
 
-  const goHome = () => {
+  const goHome = useCallback(() => {
     setSelectedCategory(null);
     setSelectedMerchant(null);
     setCurrentView('offers'); // Reset to Offers page
@@ -91,11 +115,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onGoToSystems, onProductClick
     setShowWorldwideSystems(false);
     setSelectedSystem(null);
     window.scrollTo(0, 0);
-  };
+  }, []);
 
-  const handleNavigate = (view: string, params?: any) => {
-    console.log('Marketplace handleNavigate:', view, params); // Debug log
-    
+  const handleNavigate = useCallback((view: string, params?: any) => {
     if (view === 'systems') {
         setShowWorldwideSystems(true);
         return;
@@ -108,57 +130,57 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onGoToSystems, onProductClick
     
     // Handle navigation to actual pages
     if (view === 'favorites') {
-        window.location.href = '/favorites';
+        router.push('/favorites');
         return;
     }
     
     if (view === 'notifications') {
-        window.location.href = '/notifications';
+        router.push('/notifications');
         return;
     }
     
     if (view === 'profile') {
-        window.location.href = '/profile';
+        router.push('/profile');
         return;
     }
     
     if (view === 'cart') {
-        window.location.href = '/cart';
+        router.push('/cart');
         return;
     }
     
     if (view === 'jobs') {
-        window.location.href = '/jobs';
+        router.push('/jobs');
         return;
     }
     
     if (view === 'business-jobs') {
-        window.location.href = '/business-jobs';
+        router.push('/business-jobs');
         return;
     }
     
     if (view === 'about') {
-        window.location.href = '/about';
+        router.push('/about');
         return;
     }
     
     if (view === 'help') {
-        window.location.href = '/help';
+        router.push('/help');
         return;
     }
     
     if (view === 'terms') {
-        window.location.href = '/terms';
+        router.push('/terms');
         return;
     }
     
     if (view === 'privacy') {
-        window.location.href = '/privacy';
+        router.push('/privacy');
         return;
     }
     
     if (view === 'blog') {
-        window.location.href = '/blog';
+        router.push('/blog');
         return;
     }
     
@@ -170,7 +192,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onGoToSystems, onProductClick
         setSelectedMerchant(null);
     }
     window.scrollTo(0, 0);
-  };
+  }, [onGoToSystems, router]);
 
   const renderListing = () => {
     switch (selectedCategory) {

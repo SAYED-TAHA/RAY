@@ -1,9 +1,9 @@
 "use client";
 
 import React from 'react';
-import BookingsDashboard from '@/components/dashboard/bookings/BookingsDashboard';
+import BookingsDashboard from '@/components/dashboard/systems/bookings/BookingsDashboard';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BusinessType } from '@/components/dashboard/config';
+import { BusinessType } from '@/components/dashboard/shared/config';
 
 export default function BookingsPage() {
   const router = useRouter();
@@ -13,7 +13,7 @@ export default function BookingsPage() {
   return (
     <BookingsDashboard 
       onLogout={() => router.push('/')} 
-      onSwitchType={(type) => router.push(`/dashboard/bookings?type=${type}`)}
+      onSwitchType={(type: BusinessType) => router.push(`/dashboard/bookings?type=${encodeURIComponent(type)}`)}
       type={typeParam}
     />
   );

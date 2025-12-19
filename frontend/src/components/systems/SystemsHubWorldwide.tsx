@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useThemeContext } from '@/context/ThemeContext';
+import { useThemeContext } from '@/context/useThemeContext';
 import { 
   Store, Utensils, Home, Car, Stethoscope, Dumbbell, 
   Wrench, Shirt, ShoppingBag, Scissors, Pill, Briefcase, 
@@ -23,7 +23,7 @@ const SystemsHubWorldwide: React.FC<SystemsHubWorldwideProps> = ({ onSystemSelec
   const [selectedCategory, setSelectedCategory] = useState('all');
   
   const handleGoToMerchant = () => {
-    window.location.href = '/merchant/supermarket-khair-zaman';
+    router.push('/merchant/supermarket-khair-zaman');
   };
 
   const managementSystems = [

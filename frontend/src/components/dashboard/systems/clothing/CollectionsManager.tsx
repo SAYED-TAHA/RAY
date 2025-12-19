@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Grid, Plus, Edit2, Trash2, Calendar, Tag, Image as ImageIcon, Save, X, Search, Loader2, MoreVertical } from 'lucide-react';
 import FileUploader from '../../../common/FileUploader';
 import { fetchCollections, saveCollection, deleteCollection, Collection } from '../../../../services/collectionService';
-import { useToast } from '../../../common/ToastContext';
+import { useToast } from '../../../common/useToast';
 
 const CollectionsManager: React.FC = () => {
   const { showToast } = useToast();

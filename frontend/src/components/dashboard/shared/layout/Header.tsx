@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Menu, Bell, LayoutGrid, Search, Sun, Moon, Palette } from 'lucide-react';
 import Link from 'next/link';
 import { DashboardConfig, BusinessType, colorClasses } from '../../config';
 import CommandPalette from './CommandPalette';
-import { useTheme } from '../../../common/ThemeContext';
+import { useTheme } from '../../../common/useTheme';
 
 interface HeaderProps {
   config: DashboardConfig;

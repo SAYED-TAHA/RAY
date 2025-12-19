@@ -1,6 +1,9 @@
 
+"use client";
+
 import React, { useState } from 'react';
 import { Heart, ShoppingBag, CalendarClock, Star, Cuboid, Image as ImageIcon, Eye } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useMarketplace } from '@/context/MarketplaceContext';
 import ReservationModal from '../modals/ReservationModal';
 
@@ -11,6 +14,7 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, compact = false, onClick }) => {
+  const router = useRouter();
   const { addToCart, toggleFavorite, isFavorite } = useMarketplace();
   const [viewMode, setViewMode] = useState<'image' | '3d'>('image');
   const [isReserveModalOpen, setIsReserveModalOpen] = useState(false);
@@ -26,8 +30,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, compact = false, onC
     if (onClick) {
       onClick(product.id);
     } else {
-      // Fallback for non-router environments
-      window.location.href = `/product/${product.id}`;
+      router.push(`/product/${product.id}`);
     }
   };
 

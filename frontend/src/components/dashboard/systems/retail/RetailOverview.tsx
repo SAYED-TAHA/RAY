@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Store, DollarSign, ShoppingCart, Users, TrendingUp, 
   Package, AlertCircle, Settings2, Plus, Loader
 } from 'lucide-react';
-import axios from 'axios';
 import StatCard from '../../../common/cards/StatCard';
 import ActionButton from '../../../common/buttons/ActionButton';
 import DashboardCustomizer from '../../DashboardCustomizer';
+import { fetchDashboardOverview } from '../../../../services/analyticsService';
 
 interface RetailOverviewProps {
   setActiveTab: (tab: string) => void;
@@ -19,7 +19,6 @@ interface DashboardStats {
   sub: string;
   icon: any;
   color: 'green' | 'orange' | 'blue' | 'yellow';
-  trend?: string;
 }
 
 interface DashboardAction {
@@ -43,21 +42,48 @@ const RetailOverview: React.FC<RetailOverviewProps> = ({ setActiveTab }) => {
       try {
         setLoading(true);
         setError(null);
-        
-        const statsResponse = await axios.get<DashboardStats[]>('/api/dashboard/retail/stats');
-        const fetchedStats = (statsResponse.data as DashboardStats[]).map((stat: any) => ({
-          ...stat,
-          icon: getIconForStat(stat.id)
-        }));
-        setStats(fetchedStats);
 
-        const actionsResponse = await axios.get<DashboardAction[]>('/api/dashboard/retail/actions');
-        const fetchedActions = (actionsResponse.data as DashboardAction[]).map((action: any) => ({
-          ...action,
-          icon: getIconForAction(action.id),
-          onClick: () => setActiveTab(action.tabId)
-        }));
-        setActions(fetchedActions);
+        const overview = await fetchDashboardOverview();
+
+        const nextStats: DashboardStats[] = [
+          {
+            id: 'stat_orders',
+            title: 'الطلبات',
+            value: String(overview.overview.orders.current ?? 0),
+            sub: `${overview.overview.orders.change >= 0 ? '+' : ''}${overview.overview.orders.change ?? 0}%`,
+            icon: getIconForStat('stat_orders'),
+            color: 'green'
+          },
+          {
+            id: 'stat_revenue',
+            title: 'الإيرادات',
+            value: `${(overview.overview.revenue.current ?? 0).toLocaleString()} ج`,
+            sub: `${overview.overview.revenue.change >= 0 ? '+' : ''}${overview.overview.revenue.change ?? 0}%`,
+            icon: getIconForStat('stat_revenue'),
+            color: 'orange'
+          },
+          {
+            id: 'stat_products',
+            title: 'المنتجات',
+            value: String(overview.overview.products.total ?? 0),
+            sub: `نشط: ${overview.overview.products.active ?? 0}`,
+            icon: getIconForStat('stat_products'),
+            color: 'blue'
+          }
+        ];
+
+        setStats(nextStats);
+
+        const nextActions: DashboardAction[] = [
+          { id: 'act_orders', label: 'الطلبات', icon: getIconForAction('act_orders'), color: 'bg-green-600 text-white', onClick: () => setActiveTab('overview') },
+          { id: 'act_new_sale', label: 'بيع جديد', icon: getIconForAction('act_new_sale'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-green-600', onClick: () => setActiveTab('pos') },
+          { id: 'act_products', label: 'المنتجات', icon: getIconForAction('act_products'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-green-600', onClick: () => setActiveTab('products') },
+          { id: 'act_customers', label: 'العملاء', icon: getIconForAction('act_customers'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-green-600', onClick: () => setActiveTab('customers') },
+          { id: 'act_reports', label: 'التقارير', icon: getIconForAction('act_reports'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-green-600', onClick: () => setActiveTab('reports') },
+          { id: 'act_inventory', label: 'المخزون', icon: getIconForAction('act_inventory'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-green-600', onClick: () => setActiveTab('inventory') }
+        ];
+
+        setActions(nextActions);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
         setError('فشل في تحميل بيانات لوحة التحكم');
@@ -73,12 +99,9 @@ const RetailOverview: React.FC<RetailOverviewProps> = ({ setActiveTab }) => {
 
   const getIconForStat = (statId: string) => {
     const iconMap: Record<string, any> = {
-      'stat_sales': DollarSign,
-      'stat_orders': ShoppingCart,
-      'stat_customers': Users,
-      'stat_stock': Package,
-      'stat_revenue': TrendingUp,
-      'stat_growth': TrendingUp,
+      stat_orders: ShoppingCart,
+      stat_revenue: DollarSign,
+      stat_products: Package,
     };
     return iconMap[statId] || DollarSign;
   };
@@ -89,8 +112,8 @@ const RetailOverview: React.FC<RetailOverviewProps> = ({ setActiveTab }) => {
       'act_inventory': Package,
       'act_customers': Users,
       'act_orders': ShoppingCart,
-      'act_suppliers': Store,
       'act_reports': TrendingUp,
+      act_products: Package,
     };
     return iconMap[actionId] || Plus;
   };
@@ -111,10 +134,13 @@ const RetailOverview: React.FC<RetailOverviewProps> = ({ setActiveTab }) => {
     );
   };
 
-  const customizerItems = [
-    ...stats.map((s: DashboardStats) => ({ id: s.id, label: s.title, category: 'stats' as const })),
-    ...actions.map((a: DashboardAction) => ({ id: a.id, label: a.label, category: 'actions' as const }))
-  ];
+  const customizerItems = useMemo(
+    () => [
+      ...stats.map((s: DashboardStats) => ({ id: s.id, label: s.title, category: 'stats' as const })),
+      ...actions.map((a: DashboardAction) => ({ id: a.id, label: a.label, category: 'actions' as const }))
+    ],
+    [actions, stats]
+  );
 
   // Show loading state
   if (loading) {

@@ -5,6 +5,9 @@ import Message from '../../models/Message.js';
 import AppSettings from '../../models/AppSettings.js';
 import DiscountCode from '../../models/DiscountCode.js';
 import Subscription from '../../models/Subscription.js';
+import FAQ from '../../models/FAQ.js';
+import SupportTicket from '../../models/SupportTicket.js';
+import ContentItem from '../../models/ContentItem.js';
 import { authenticateToken, requireAdmin } from '../../middleware/auth.js';
 
 const router = express.Router();
@@ -44,6 +47,82 @@ const monthLabelAr = (yearMonth) => {
 };
 
 router.use(authenticateToken, requireAdmin);
+
+router.get('/help/faqs', (req, res) => {
+  (async () => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+      const search = (req.query.search || '').toString().trim();
+      const category = (req.query.category || '').toString().trim();
+      const status = (req.query.status || '').toString().trim();
+
+      const filter = {};
+      if (category) filter.category = category;
+      if (status) filter.status = status;
+      if (search) {
+        filter.$or = [
+          { question: { $regex: search, $options: 'i' } },
+          { answer: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      const faqs = await FAQ.find(filter).sort({ updatedAt: -1 }).limit(limit);
+      res.json(faqs);
+    } catch (error) {
+      console.error('Admin FAQs error:', error);
+      res.status(500).json({ error: 'خطأ في جلب الأسئلة الشائعة' });
+    }
+  })();
+});
+
+router.get('/help/tickets', (req, res) => {
+  (async () => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+      const status = (req.query.status || '').toString().trim();
+      const search = (req.query.search || '').toString().trim();
+
+      const filter = {};
+      if (status) filter.status = status;
+      if (search) {
+        filter.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
+        ];
+      }
+
+      const tickets = await SupportTicket.find(filter).sort({ updatedAt: -1 }).limit(limit);
+      res.json(tickets);
+    } catch (error) {
+      console.error('Admin support tickets error:', error);
+      res.status(500).json({ error: 'خطأ في جلب تذاكر الدعم' });
+    }
+  })();
+});
+
+router.get('/content', (req, res) => {
+  (async () => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit) || 200, 500);
+      const type = (req.query.type || '').toString().trim();
+      const category = (req.query.category || '').toString().trim();
+      const status = (req.query.status || '').toString().trim();
+      const search = (req.query.search || '').toString().trim();
+
+      const filter = {};
+      if (type) filter.type = type;
+      if (category) filter.category = category;
+      if (status) filter.status = status;
+      if (search) filter.title = { $regex: search, $options: 'i' };
+
+      const items = await ContentItem.find(filter).sort({ updatedAt: -1 }).limit(limit);
+      res.json(items);
+    } catch (error) {
+      console.error('Admin content error:', error);
+      res.status(500).json({ error: 'خطأ في جلب المحتوى' });
+    }
+  })();
+});
 
 // التحليل المالي
 router.get('/financial-analysis', (req, res) => {

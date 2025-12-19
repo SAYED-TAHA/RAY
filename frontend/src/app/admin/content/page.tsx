@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   FileText, Image, Video, Music, Plus, Edit, Trash2,
   Search, Filter, Download, Eye, Calendar, Tag,
   FolderOpen, Upload, Link2, Clock, CheckCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { fetchAdminContentItems, type AdminContentItem } from '../../../services/adminContentService';
 
 interface ContentItem {
   id: string;
@@ -23,12 +24,51 @@ interface ContentItem {
 }
 
 export default function AdminContent() {
-  const content: ContentItem[] = [];
+  const [content, setContent] = useState<ContentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+
+  const mapApiItem = (item: AdminContentItem): ContentItem => {
+    const created = item.createdAt ? new Date(item.createdAt).toLocaleString('ar-EG') : '';
+    const modified = item.updatedAt ? new Date(item.updatedAt).toLocaleString('ar-EG') : created;
+    return {
+      id: item.id,
+      title: item.title,
+      type: item.type,
+      category: item.category,
+      status: item.status,
+      views: item.views || 0,
+      created,
+      modified,
+      size: item.size || undefined,
+      duration: item.duration || undefined,
+      author: item.author || 'System'
+    };
+  };
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchAdminContentItems({ limit: 500 });
+      setContent((data || []).map(mapApiItem));
+    } catch (e) {
+      console.error('Failed to load admin content:', e);
+      setContent([]);
+      setError('فشل تحميل المحتوى');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const filteredContent = content.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -186,6 +226,20 @@ export default function AdminContent() {
       </div>
 
       <div className="p-6">
+        {loading ? (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200 text-center text-gray-600">
+            جاري تحميل المحتوى...
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 rounded-xl p-6 border border-red-200 text-red-700 text-center">
+            {error}
+            <div className="mt-4">
+              <button onClick={load} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                إعادة المحاولة
+              </button>
+            </div>
+          </div>
+        ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -283,6 +337,7 @@ export default function AdminContent() {
             </table>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useThemeContext } from '@/context/ThemeContext';
+import { useThemeContext } from '@/context/useThemeContext';
 import { 
   ArrowLeft, Store, Upload, Palette, Layout, Image, FileText, 
   Globe, CreditCard, Package, Settings, Check, ChevronRight,

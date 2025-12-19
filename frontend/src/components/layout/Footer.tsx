@@ -45,6 +45,10 @@ const Footer: React.FC<FooterProps> = ({ onGoToSystems, onNavigate }) => {
               </p>
 <button 
                 onClick={() => {
+                  if (onGoToSystems) {
+                    onGoToSystems();
+                    return;
+                  }
                   window.location.href = '/systems';
                 }}
                 className="flex items-center gap-3 p-3 rounded-xl border transition-all group text-right bg-ray-blue text-white dark:bg-ray-gold dark:text-ray-black hover:bg-blue-800 dark:hover:bg-yellow-400 border-ray-blue dark:border-ray-gold w-full md:w-auto justify-center md:justify-start"

@@ -1,25 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
-import { Bell, Settings, Settings2 } from 'lucide-react';
+import { Package, Settings2, ShoppingCart, DollarSign, TrendingUp } from 'lucide-react';
 import QuickActions from '../widgets/QuickActions';
 import StatsGrid from '../widgets/StatsGrid';
 import RecentActivityTable from '../widgets/RecentActivityTable';
 import DashboardCustomizer from '../../DashboardCustomizer';
 import Breadcrumbs from '../../../common/Breadcrumbs';
 import { DashboardConfig, BusinessType } from '../../config';
-
-const chartData = [
-  { name: 'السبت', sales: 4000 },
-  { name: 'الأحد', sales: 3000 },
-  { name: 'الاثنين', sales: 2000 },
-  { name: 'الثلاثاء', sales: 2780 },
-  { name: 'الأربعاء', sales: 1890 },
-  { name: 'الخميس', sales: 2390 },
-  { name: 'الجمعة', sales: 3490 },
-];
+import { fetchDashboardOverview, fetchSalesReport } from '../../../../services/analyticsService';
 
 interface OverviewProps {
   config: DashboardConfig;
@@ -31,8 +22,14 @@ interface OverviewProps {
 const Overview: React.FC<OverviewProps> = ({ config, currentBusinessType, theme, onNavigate }) => {
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [visibleIds, setVisibleIds] = useState<string[]>([]);
+  const [chartData, setChartData] = useState<Array<{ name: string; sales: number }>>([]);
+  const [recentRows, setRecentRows] = useState<
+    Array<{ id: string; col1?: string; col2?: string; col3?: string; status?: string; time?: string }>
+  >([]);
+  const [stats, setStats] = useState<DashboardConfig['stats']>([]);
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const statItems = config.stats.map((stat, idx) => ({
+  const statItems = stats.map((stat, idx) => ({
     id: `stat-${idx}`,
     label: stat.label,
     category: 'stats' as const
@@ -47,7 +44,73 @@ const Overview: React.FC<OverviewProps> = ({ config, currentBusinessType, theme,
   useEffect(() => {
     const allIds = [...statItems.map(i => i.id), ...actionItems.map(i => i.id)];
     setVisibleIds(allIds);
-  }, [currentBusinessType]);
+  }, [currentBusinessType, stats.length]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setApiError(null);
+        const [overview, sales] = await Promise.all([
+          fetchDashboardOverview(),
+          fetchSalesReport(undefined, undefined, 'day')
+        ]);
+
+        const nextStats: DashboardConfig['stats'] = [
+          {
+            label: 'الطلبات',
+            value: String(overview.overview.orders.current ?? 0),
+            trend: Math.round(overview.overview.orders.change ?? 0),
+            icon: ShoppingCart,
+          },
+          {
+            label: 'الإيرادات',
+            value: `${(overview.overview.revenue.current ?? 0).toLocaleString()} ج`,
+            trend: Math.round(overview.overview.revenue.change ?? 0),
+            icon: DollarSign,
+          },
+          {
+            label: 'المنتجات',
+            value: String(overview.overview.products.total ?? 0),
+            trend: 0,
+            icon: Package,
+          },
+          {
+            label: 'متوسط الطلب',
+            value: overview.overview.orders.current
+              ? `${Math.round((overview.overview.revenue.current ?? 0) / overview.overview.orders.current).toLocaleString()} ج`
+              : 'N/A',
+            trend: 0,
+            icon: TrendingUp,
+          },
+        ];
+        setStats(nextStats);
+
+        const nextRecent = (overview.recentOrders || []).slice(0, 5).map((o) => ({
+          id: o.orderNumber,
+          col1: o.status,
+          col2: new Date(o.createdAt).toLocaleDateString(),
+          col3: `${(o.pricing?.total ?? 0).toLocaleString()} ج`,
+          status: o.status,
+          time: new Date(o.createdAt).toLocaleString(),
+        }));
+        setRecentRows(nextRecent);
+
+        const nextChart = (sales.salesData || []).slice(-7).map((p) => ({
+          name: p.period,
+          sales: p.revenue
+        }));
+        setChartData(nextChart);
+      } catch (e) {
+        console.error('Failed to load dashboard overview data:', e);
+        setApiError('تعذر تحميل بيانات التحليلات حالياً');
+        setChartData([]);
+        setRecentRows([]);
+        setStats([]);
+      }
+    };
+
+    load();
+  }, []);
 
   const handleToggle = (id: string) => {
     setVisibleIds(prev => 
@@ -70,7 +133,10 @@ const Overview: React.FC<OverviewProps> = ({ config, currentBusinessType, theme,
     else onNavigate(action);
   };
 
-  const displayedStats = config.stats.filter((_, idx) => visibleIds.includes(`stat-${idx}`));
+  const displayedStats = useMemo(
+    () => stats.filter((_, idx) => visibleIds.includes(`stat-${idx}`)),
+    [stats, visibleIds]
+  );
   const displayedActions = config.quickActions.filter((_, idx) => visibleIds.includes(`action-${idx}`));
 
   return (
@@ -113,8 +179,9 @@ const Overview: React.FC<OverviewProps> = ({ config, currentBusinessType, theme,
               </select>
           </div>
           <div className="h-64 md:h-80 w-full" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
+            {chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={config.themeColor === 'orange' ? '#F97316' : '#1E3A8A'} stopOpacity={0.3}/>
@@ -135,31 +202,22 @@ const Overview: React.FC<OverviewProps> = ({ config, currentBusinessType, theme,
                   fillOpacity={1} 
                   fill="url(#colorSales)" 
                 />
-              </AreaChart>
-            </ResponsiveContainer>
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-gray-600">
+                {apiError ? apiError : 'لا توجد بيانات متاحة'}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
           <h3 className="text-lg font-bold mb-4 text-gray-800">تنبيهات النظام</h3>
-          <div className="flex-1 space-y-4">
-              <div className={`p-4 rounded-xl border ${theme.border} ${theme.bg} flex gap-3 items-start`}>
-                  <Bell className={`w-5 h-5 ${theme.text} mt-0.5`} />
-                  <div>
-                    <h4 className={`font-bold text-sm ${theme.text}`}>طلب جديد</h4>
-                    <p className="text-xs text-gray-600 mt-1">تم استلام طلب جديد بقيمة 450 ج منذ دقيقتين.</p>
-                  </div>
-              </div>
-              
-              <div className="p-4 rounded-xl border border-gray-100 bg-gray-50 flex gap-3 items-start">
-                  <Settings className="w-5 h-5 text-gray-500 mt-0.5" />
-                  <div>
-                    <h4 className="font-bold text-sm text-gray-700">تحديث المخزون</h4>
-                    <p className="text-xs text-gray-600 mt-1">بعض المنتجات قاربت على النفاذ، يرجى المراجعة.</p>
-                  </div>
-              </div>
+          <div className="flex-1 p-6 text-center text-gray-600">
+            لا توجد تنبيهات متاحة حالياً. سيتم ربط التنبيهات ببيانات النظام عند توفر API.
           </div>
-          <button className={`w-full py-3 rounded-xl text-white font-bold mt-4 transition ${theme.btn}`}>
+          <button disabled className={`w-full py-3 rounded-xl text-white font-bold mt-4 transition ${theme.btn} opacity-60 cursor-not-allowed`}>
             عرض كل التنبيهات
           </button>
         </div>
@@ -170,6 +228,7 @@ const Overview: React.FC<OverviewProps> = ({ config, currentBusinessType, theme,
         currentBusinessType={currentBusinessType} 
         theme={theme} 
         onNavigate={onNavigate}
+        rows={recentRows}
       />
 
       <DashboardCustomizer 

@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import StatCard from '../../../common/cards/StatCard';
 import { getGeminiResponse } from '@/services/geminiService';
-import { useToast } from '../../../common/ToastContext';
+import { useToast } from '../../../common/useToast';
 
 const initialCampaigns = [
   { id: 1, title: 'عروض الجمعة البيضاء', type: 'Public Offer', status: 'active', reach: 15000, clicks: 4500, date: '2025-11-20' },

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useThemeContext } from '@/context/ThemeContext';
+import { useThemeContext } from '@/context/useThemeContext';
 import { 
   Store, ShoppingCart, Globe, Smartphone, Palette, Settings, 
   TrendingUp, Users, Package, CreditCard, Star, ArrowRight,

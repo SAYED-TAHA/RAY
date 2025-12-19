@@ -9,6 +9,9 @@ import Analytics from './Analytics.js';
 import Message from './Message.js';
 import Conversation from './Conversation.js';
 import Subscription from './Subscription.js';
+import FAQ from './FAQ.js';
+import SupportTicket from './SupportTicket.js';
+import ContentItem from './ContentItem.js';
 
 export {
   User,
@@ -20,7 +23,10 @@ export {
   Analytics,
   Message,
   Conversation,
-  Subscription
+  Subscription,
+  FAQ,
+  SupportTicket,
+  ContentItem
 };
 
 export default {
@@ -33,5 +39,8 @@ export default {
   Analytics,
   Message,
   Conversation,
-  Subscription
+  Subscription,
+  FAQ,
+  SupportTicket,
+  ContentItem
 };

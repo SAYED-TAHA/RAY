@@ -1,25 +1,19 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import RestaurantDashboard from '@/components/dashboard/systems/restaurants/RestaurantDashboard';
+import { BusinessType } from '@/components/dashboard/shared/config';
 
 function RestaurantPageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const isDemo = searchParams.get('demo') === 'true';
 
-  const handleLogout = () => {
-    console.log('Logout');
-  };
-  
-  const handleSwitchType = (type: any) => {
-    console.log('Switch to:', type);
-  };
-
   return (
     <RestaurantDashboard 
-      onLogout={handleLogout}
-      onSwitchType={handleSwitchType}
+      onLogout={() => router.push('/')}
+      onSwitchType={(type: BusinessType) => router.push(`/dashboard?type=${encodeURIComponent(type)}`)}
       isDemo={isDemo}
     />
   );

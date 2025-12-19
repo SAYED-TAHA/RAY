@@ -1,14 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   DollarSign, ChefHat, Utensils, Truck, Plus, Calendar, 
   Clock, Package, Printer, AlertCircle, CheckCircle, Settings2, Loader
 } from 'lucide-react';
-import axios from 'axios';
 import ActionButton from '../../../common/buttons/ActionButton';
 import StatCard from '../../../common/cards/StatCard';
 import StatusBadge from '../../../common/StatusBadge';
 import DashboardCustomizer from '../../DashboardCustomizer';
+import { fetchDashboardOverview } from '../../../../services/analyticsService';
 
 interface RestaurantOverviewProps {
   setActiveTab: (tab: string) => void;
@@ -21,7 +21,6 @@ interface DashboardStats {
   sub: string;
   icon: any;
   color: 'orange' | 'yellow' | 'blue' | 'green';
-  trend: string;
 }
 
 interface DashboardAction {
@@ -36,6 +35,9 @@ const RestaurantOverview: React.FC<RestaurantOverviewProps> = ({ setActiveTab })
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [stats, setStats] = useState<DashboardStats[]>([]);
   const [actions, setActions] = useState<DashboardAction[]>([]);
+  const [recentOrders, setRecentOrders] = useState<
+    Array<{ orderNumber: string; status: string; pricing: { total: number }; createdAt: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,29 +47,64 @@ const RestaurantOverview: React.FC<RestaurantOverviewProps> = ({ setActiveTab })
       try {
         setLoading(true);
         setError(null);
-        
-        // Fetch stats from API
-        const statsResponse = await axios.get<DashboardStats[]>('/api/dashboard/restaurant/stats');
-        const fetchedStats = (statsResponse.data as DashboardStats[]).map((stat: any) => ({
-          ...stat,
-          icon: getIconForStat(stat.id)
-        }));
-        setStats(fetchedStats);
 
-        // Fetch actions from API
-        const actionsResponse = await axios.get<DashboardAction[]>('/api/dashboard/restaurant/actions');
-        const fetchedActions = (actionsResponse.data as DashboardAction[]).map((action: any) => ({
-          ...action,
-          icon: getIconForAction(action.id),
-          onClick: () => setActiveTab(action.tabId)
-        }));
-        setActions(fetchedActions);
+        const overview = await fetchDashboardOverview();
+
+        const nextStats: DashboardStats[] = [
+          {
+            id: 'stat_orders',
+            title: 'الطلبات',
+            value: String(overview.overview.orders.current ?? 0),
+            sub: `${overview.overview.orders.change >= 0 ? '+' : ''}${overview.overview.orders.change ?? 0}%`,
+            icon: getIconForStat('stat_orders'),
+            color: 'orange'
+          },
+          {
+            id: 'stat_revenue',
+            title: 'الإيرادات',
+            value: `${(overview.overview.revenue.current ?? 0).toLocaleString()} ج`,
+            sub: `${overview.overview.revenue.change >= 0 ? '+' : ''}${overview.overview.revenue.change ?? 0}%`,
+            icon: getIconForStat('stat_revenue'),
+            color: 'green'
+          },
+          {
+            id: 'stat_products',
+            title: 'المنتجات',
+            value: String(overview.overview.products.total ?? 0),
+            sub: `نشط: ${overview.overview.products.active ?? 0}`,
+            icon: getIconForStat('stat_products'),
+            color: 'blue'
+          },
+          {
+            id: 'stat_pending',
+            title: 'طلبات حديثة',
+            value: String(Array.isArray(overview.recentOrders) ? overview.recentOrders.length : 0),
+            sub: 'آخر الطلبات',
+            icon: getIconForStat('stat_pending'),
+            color: 'yellow'
+          }
+        ];
+
+        setStats(nextStats);
+        setRecentOrders(Array.isArray(overview.recentOrders) ? overview.recentOrders : []);
+
+        const nextActions: DashboardAction[] = [
+          { id: 'act_new_order', label: 'طلب جديد', icon: getIconForAction('act_new_order'), color: 'bg-orange-600 text-white', onClick: () => setActiveTab('orders') },
+          { id: 'act_pos', label: 'الكاشير', icon: getIconForAction('act_pos'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-orange-500', onClick: () => setActiveTab('pos') },
+          { id: 'act_menu', label: 'قائمة الطعام', icon: getIconForAction('act_menu'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-orange-500', onClick: () => setActiveTab('menu') },
+          { id: 'act_stock', label: 'المخزون', icon: getIconForAction('act_stock'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-orange-500', onClick: () => setActiveTab('inventory') },
+          { id: 'act_reports', label: 'التقارير', icon: getIconForAction('act_report'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-orange-500', onClick: () => setActiveTab('reports') },
+          { id: 'act_reservations', label: 'الحجوزات', icon: getIconForAction('act_reservations'), color: 'bg-white text-gray-700 border border-gray-200 hover:border-orange-500', onClick: () => setActiveTab('reservations') }
+        ];
+
+        setActions(nextActions);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
         setError('فشل في تحميل بيانات لوحة التحكم');
         // Set default empty arrays on error
         setStats([]);
         setActions([]);
+        setRecentOrders([]);
       } finally {
         setLoading(false);
       }
@@ -79,12 +116,10 @@ const RestaurantOverview: React.FC<RestaurantOverviewProps> = ({ setActiveTab })
   // Helper function to get icon based on stat ID
   const getIconForStat = (statId: string) => {
     const iconMap: Record<string, any> = {
-      'stat_sales': DollarSign,
-      'stat_kitchen': ChefHat,
-      'stat_tables': Utensils,
-      'stat_delivery': Truck,
-      'stat_rating': CheckCircle,
-      'stat_revenue': DollarSign,
+      stat_orders: Utensils,
+      stat_revenue: DollarSign,
+      stat_products: Package,
+      stat_pending: Clock,
     };
     return iconMap[statId] || DollarSign;
   };
@@ -93,9 +128,9 @@ const RestaurantOverview: React.FC<RestaurantOverviewProps> = ({ setActiveTab })
   const getIconForAction = (actionId: string) => {
     const iconMap: Record<string, any> = {
       'act_new_order': Plus,
-      'act_book_table': Calendar,
-      'act_shift': Clock,
-      'act_expense': DollarSign,
+      act_pos: Utensils,
+      act_menu: ChefHat,
+      act_reservations: Calendar,
       'act_stock': Package,
       'act_report': Printer,
     };
@@ -118,10 +153,13 @@ const RestaurantOverview: React.FC<RestaurantOverviewProps> = ({ setActiveTab })
     );
   };
 
-  const customizerItems = [
-    ...stats.map((s: DashboardStats) => ({ id: s.id, label: s.title, category: 'stats' as const })),
-    ...actions.map((a: DashboardAction) => ({ id: a.id, label: a.label, category: 'actions' as const }))
-  ];
+  const customizerItems = useMemo(
+    () => [
+      ...stats.map((s: DashboardStats) => ({ id: s.id, label: s.title, category: 'stats' as const })),
+      ...actions.map((a: DashboardAction) => ({ id: a.id, label: a.label, category: 'actions' as const }))
+    ],
+    [actions, stats]
+  );
 
   // Show loading state
   if (loading) {
@@ -208,30 +246,24 @@ const RestaurantOverview: React.FC<RestaurantOverviewProps> = ({ setActiveTab })
                 </tr>
               </thead>
               <tbody className="text-sm">
-                <tr className="border-b border-gray-50">
-                  <td className="p-3 font-bold">#1054</td>
-                  <td className="p-3"><span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">صالة</span></td>
-                  <td className="p-3">T-05</td>
-                  <td className="p-3 text-gray-500">منذ 12 د</td>
-                  <td className="p-3"><StatusBadge status="preparing" /></td>
-                  <td className="p-3 font-bold">450 ج</td>
-                </tr>
-                <tr className="border-b border-gray-50">
-                  <td className="p-3 font-bold">#1055</td>
-                  <td className="p-3"><span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">توصيل</span></td>
-                  <td className="p-3">أحمد محمد</td>
-                  <td className="p-3 text-gray-500">منذ 5 د</td>
-                  <td className="p-3"><StatusBadge status="pending" /></td>
-                  <td className="p-3 font-bold">120 ج</td>
-                </tr>
-                <tr className="border-b border-gray-50">
-                  <td className="p-3 font-bold">#1056</td>
-                  <td className="p-3"><span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs">تيك أواي</span></td>
-                  <td className="p-3">كابتن علي</td>
-                  <td className="p-3 text-gray-500">منذ 2 د</td>
-                  <td className="p-3"><StatusBadge status="pending" /></td>
-                  <td className="p-3 font-bold">85 ج</td>
-                </tr>
+                {recentOrders.length === 0 ? (
+                  <tr>
+                    <td className="p-6 text-center text-gray-600" colSpan={6}>
+                      لا توجد طلبات حالياً
+                    </td>
+                  </tr>
+                ) : (
+                  recentOrders.slice(0, 5).map((o) => (
+                    <tr key={o.orderNumber} className="border-b border-gray-50">
+                      <td className="p-3 font-bold">{o.orderNumber}</td>
+                      <td className="p-3"><span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">-</span></td>
+                      <td className="p-3">-</td>
+                      <td className="p-3 text-gray-500">{new Date(o.createdAt).toLocaleString()}</td>
+                      <td className="p-3"><StatusBadge status={o.status} /></td>
+                      <td className="p-3 font-bold">{(o.pricing?.total ?? 0).toLocaleString()} ج</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -252,15 +284,8 @@ const RestaurantOverview: React.FC<RestaurantOverviewProps> = ({ setActiveTab })
                   المخزون
                 </button>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-red-50 rounded-xl border border-red-100">
-                  <span className="text-sm font-medium text-red-800">برجر لحم</span>
-                  <span className="text-xs bg-white px-2 py-1 rounded text-red-600 font-bold">باقي 3 قطع</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-xl border border-yellow-100">
-                  <span className="text-sm font-medium text-yellow-800">صوص جبنة</span>
-                  <span className="text-xs bg-white px-2 py-1 rounded text-yellow-600 font-bold">ينفد قريباً</span>
-                </div>
+              <div className="p-6 text-center text-gray-600">
+                لا توجد تنبيهات متاحة حالياً. سيتم ربط تنبيهات المطبخ ببيانات المخزون عند توفر API.
               </div>
            </div>
 
@@ -268,16 +293,16 @@ const RestaurantOverview: React.FC<RestaurantOverviewProps> = ({ setActiveTab })
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <p className="text-gray-400 text-sm">كفاءة المطبخ</p>
-                  <h3 className="text-2xl font-bold">94%</h3>
+                  <h3 className="text-2xl font-bold">N/A</h3>
                 </div>
                 <div className="bg-green-500/20 p-2 rounded-lg">
                   <CheckCircle className="w-6 h-6 text-green-500" />
                 </div>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{width: '94%'}}></div>
+                <div className="bg-green-500 h-2 rounded-full" style={{width: '0%'}}></div>
               </div>
-              <p className="text-xs text-gray-400">متوسط وقت التحضير: 12 دقيقة</p>
+              <p className="text-xs text-gray-400">متوسط وقت التحضير: N/A</p>
            </div>
         </div>
       </div>

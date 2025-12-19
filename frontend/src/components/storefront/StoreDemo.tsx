@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useThemeContext } from '@/context/ThemeContext';
+import { useThemeContext } from '@/context/useThemeContext';
 import { 
   Globe, Smartphone, ShoppingCart, Star, Heart, Search, Menu, X,
   ChevronLeft, ChevronRight, Filter, Grid, List, Package, Truck,

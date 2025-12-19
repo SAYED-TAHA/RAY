@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMerchant } from '@/context/MerchantContext';
+import { useMerchant } from '@/context/useMerchant';
 import { 
   Store, Mail, Lock, Eye, EyeOff, ChevronRight, ArrowRight
 } from 'lucide-react';

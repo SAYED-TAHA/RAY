@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Mail, Lock, User, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -37,8 +37,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
     if (username === 'ادمن' && password === '1234') {
       // Set admin mode and redirect to new admin dashboard
       localStorage.setItem('userType', 'admin');
-      window.location.href = '/admin';
       onClose();
+      router.push('/admin');
     } else {
       alert('بيانات الدخول غير صحيحة');
     }

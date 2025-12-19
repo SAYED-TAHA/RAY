@@ -1,58 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'user' | 'merchant' | 'admin';
-  avatar?: string;
-  isEmailVerified: boolean;
-  preferences?: {
-    language: 'ar' | 'en';
-    theme: 'light' | 'dark';
-  };
-  subscription?: {
-    plan: 'free' | 'basic' | 'premium' | 'enterprise';
-    status: 'active' | 'inactive';
-  };
-  businessInfo?: {
-    businessName?: string;
-    businessType?: string;
-    phone?: string;
-  };
-}
-
-interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: string;
-  tokenType: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  tokens: AuthTokens | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
-  loginWithGoogle: () => void;
-  logout: () => void;
-  refreshToken: () => Promise<void>;
-  updateProfile: (data: Partial<User>) => Promise<void>;
-  loading: boolean;
-  isAuthenticated: boolean;
-}
-
-interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
-  role?: 'user' | 'merchant';
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext, AuthTokens, RegisterData, User } from './auth-context';
 
 // Configure axios defaults
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -228,14 +179,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
 
 // Helper function to refresh tokens

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useThemeContext } from '@/context/ThemeContext';
+import { useThemeContext } from '@/context/useThemeContext';
 import { 
   ArrowLeft, CheckCircle, Star, Users, Clock, CreditCard, 
   Package, TrendingUp, Shield, Award, ChevronRight, Play,
@@ -258,9 +258,7 @@ const SystemActivitySelector: React.FC<SystemActivitySelectorProps> = ({ systemI
   const handleTryDemo = (activityId: string) => {
     // Navigate to demo dashboard
     const demoPath = `/dashboard/${activityId}?demo=true`;
-    console.log('Navigating to demo:', demoPath);
-    console.log('Activity ID:', activityId);
-    window.location.href = demoPath;
+    router.push(demoPath);
   };
 
   if (showPricing && selectedActivity) {
