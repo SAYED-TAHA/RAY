@@ -12,12 +12,13 @@ import { rateLimiter, strictRateLimiter } from '../../middleware/rateLimiter.js'
 
 const router = express.Router();
 
-// Public routes (rate limiter temporarily disabled)
-router.get('/', getProducts);
-router.get('/:id', validateObjectId, getProductById);
+// Public routes
+router.get('/', rateLimiter(), getProducts);
+router.get('/:id', rateLimiter(), validateObjectId, getProductById);
 
-// Protected admin routes (rate limiter temporarily disabled)
+// Protected admin routes
 router.post('/', 
+  strictRateLimiter,
   authenticateToken, 
   requireAdmin, 
   validateProductInput, 
@@ -25,6 +26,7 @@ router.post('/',
 );
 
 router.put('/:id', 
+  strictRateLimiter,
   authenticateToken, 
   requireAdmin, 
   validateObjectId, 
@@ -33,6 +35,7 @@ router.put('/:id',
 );
 
 router.delete('/:id', 
+  strictRateLimiter,
   authenticateToken, 
   requireAdmin, 
   validateObjectId, 

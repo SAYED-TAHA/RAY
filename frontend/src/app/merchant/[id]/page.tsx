@@ -5,8 +5,7 @@ import React, { useState, useEffect } from 'react';
 import MerchantPublicView from '@/components/views/MerchantPublicView';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import GeminiAssistant from '@/components/common/GeminiAssistant';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/utils/api';
 
 interface Merchant {
   id: string;

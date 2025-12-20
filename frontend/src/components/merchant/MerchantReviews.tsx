@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Star, MessageSquare, ThumbsUp, Send } from 'lucide-react';
+import { API_URL } from '@/utils/api';
 
 interface Review {
   id: number;
@@ -9,8 +10,6 @@ interface Review {
   date: string;
   text: string;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 interface MerchantReviewsProps {
   merchantId?: string;

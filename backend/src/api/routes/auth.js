@@ -2,6 +2,7 @@ import express from 'express';
 import passport from '../../config/passport.js';
 import { generateTokenPair, refreshAccessToken, createJWTPayload } from '../../utils/jwt.js';
 import User from '../../models/User.js';
+import { authenticateToken } from '../../middleware/auth.js';
 
 const router = express.Router();
 
@@ -39,7 +40,7 @@ router.post('/register', async (req, res) => {
       email,
       password,
       name,
-      role
+      role: role === 'merchant' ? 'merchant' : 'user'
     });
 
     // Generate tokens
@@ -198,20 +199,9 @@ router.post('/logout', (req, res) => {
 });
 
 // Get current user profile
-router.get('/profile', async (req, res) => {
+router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided'
-      });
-    }
-
-    const { verifyToken } = await import('../../utils/jwt.js');
-    const decoded = verifyToken(token);
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({
@@ -237,20 +227,9 @@ router.get('/profile', async (req, res) => {
 });
 
 // Update user profile
-router.put('/profile', async (req, res) => {
+router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided'
-      });
-    }
-
-    const { verifyToken } = await import('../../utils/jwt.js');
-    const decoded = verifyToken(token);
-    const user = await User.findById(decoded.userId);
+    const user = await User.findById(req.user.id);
 
     if (!user) {
       return res.status(404).json({

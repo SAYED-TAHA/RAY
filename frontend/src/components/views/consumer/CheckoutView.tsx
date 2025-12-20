@@ -4,6 +4,7 @@ import {
   CheckCircle, CreditCard, MapPin, Truck, ChevronRight, 
   ShieldCheck, Banknote, Wallet, ArrowLeft, Loader, ShoppingCart
 } from 'lucide-react';
+import { API_URL } from '@/utils/api';
 
 interface CheckoutViewProps {
   onBack: () => void;
@@ -17,8 +18,6 @@ interface CartItem {
   qty: number;
   image: string;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const CheckoutView: React.FC<CheckoutViewProps> = ({ onBack, onComplete }) => {
   const [step, setStep] = useState(1); // 1: Address, 2: Payment, 3: Review

@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserSubscription, SubscriptionPlan, SUBSCRIPTION_PLANS, checkActivityAccess, getAvailableFeatures } from '../services/subscriptionService';
+import { API_URL } from '@/utils/api';
 
 interface SubscriptionContextType {
   userSubscription: UserSubscription | null;
@@ -18,8 +19,6 @@ interface SubscriptionContextType {
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);

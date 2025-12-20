@@ -1,12 +1,9 @@
-
 "use client";
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, User, Phone, ArrowRight, ArrowLeft, Store } from 'lucide-react';
 import { useAuth } from '@/context/useAuth';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const SignupPage = () => {
   const router = useRouter();
@@ -108,6 +105,8 @@ const SignupPage = () => {
                     <input 
                       type="text" 
                       required
+                      value={formData.name}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                       className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-3 pr-12 pl-4 focus:outline-none focus:border-ray-blue dark:focus:border-ray-gold transition dark:text-white"
                       placeholder="الاسم ثلاثي"
                     />
@@ -121,6 +120,8 @@ const SignupPage = () => {
                     <input 
                       type="email" 
                       required
+                      value={formData.email}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                       className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-3 pr-12 pl-4 focus:outline-none focus:border-ray-blue dark:focus:border-ray-gold transition dark:text-white"
                       placeholder="name@example.com"
                     />
@@ -134,6 +135,8 @@ const SignupPage = () => {
                     <input 
                       type="tel" 
                       required
+                      value={formData.phone}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
                       className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-3 pr-12 pl-4 focus:outline-none focus:border-ray-blue dark:focus:border-ray-gold transition dark:text-white text-right dir-ltr"
                       placeholder="01xxxxxxxxx"
                     />
@@ -147,6 +150,8 @@ const SignupPage = () => {
                     <input 
                       type="password" 
                       required
+                      value={formData.password}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
                       className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl py-3 pr-12 pl-4 focus:outline-none focus:border-ray-blue dark:focus:border-ray-gold transition dark:text-white"
                       placeholder="••••••••"
                     />

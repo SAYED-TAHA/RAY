@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useTheme } from '../../../common/useTheme';
+import { useTheme } from '@/components/common/useTheme';
 import { 
   Search, Plus, Minus, Trash2, CreditCard, Banknote, 
   ShoppingCart, Package, BarChart3, Store, Globe, Eye, EyeOff,
@@ -29,7 +29,7 @@ interface IntegratedPOSProps {
 }
 
 const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
-  const { isDarkMode } = useTheme();
+  const { theme } = useTheme();
   const [activeView, setActiveView] = useState<'overview' | 'pos' | 'transactions'>('overview');
   const [cart, setCart] = useState<{item: Item, qty: number}[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,7 +46,6 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
 
   // Local state for theme and language
   const language = 'ar';
-  const theme = isDarkMode ? 'dark' : 'light';
   const themeColor = 'blue';
 
   const items = getRetailProducts(language);

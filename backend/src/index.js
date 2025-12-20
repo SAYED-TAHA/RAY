@@ -14,6 +14,7 @@ dotenv.config({ path: path.join(__dirname, '.env.local') });
 // Import after loading environment variables
 import connectDB from './config/mongodb.js';
 import passport from './config/passport.js';
+import { logger, errorHandler } from './utils/logger.js';
 import productRoutes from './api/routes/products.js';
 import searchRoutes from './api/routes/search.js';
 import storefrontRoutes from './api/routes/storefront.js';
@@ -38,15 +39,32 @@ app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = [
       'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      process.env.CORS_ORIGIN
+      'http://127.0.0.1:3000'
     ];
     
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Add CORS_ORIGIN from environment if set
+    if (process.env.CORS_ORIGIN) {
+      allowedOrigins.push(process.env.CORS_ORIGIN);
+    }
+    
+    // In production, be more strict
+    if (process.env.NODE_ENV === 'production') {
+      // Don't allow requests with no origin in production
+      if (!origin) {
+        return callback(new Error('Not allowed by CORS'));
+      }
+      
+      // Don't allow all 127.0.0.1 subdomains in production
+      if (origin.includes('127.0.0.1') && !allowedOrigins.includes(origin)) {
+        return callback(new Error('Not allowed by CORS'));
+      }
+    }
+    
+    // Allow requests with no origin in development (like mobile apps or curl requests)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
-    } else if (origin && origin.includes('127.0.0.1')) {
-      // Allow all 127.0.0.1 origins (browser preview proxy)
+    } else if (origin && origin.includes('127.0.0.1') && process.env.NODE_ENV !== 'production') {
+      // Allow all 127.0.0.1 origins in development (browser preview proxy)
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -86,6 +104,10 @@ app.get('/', (req, res) => {
   res.send('RAY API Server is running...');
 });
 
+// Error handling middleware (must be last)
+app.use(errorHandler);
+
 app.listen(PORT, () => {
+  logger.info(`Server running on http://localhost:${PORT}`);
   console.log(` Server running on http://localhost:${PORT}`);
 });

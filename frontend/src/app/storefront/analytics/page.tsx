@@ -6,6 +6,7 @@ import {
   BarChart3, LineChart, PieChart, TrendingUp, Calendar, Download,
   ArrowLeft, Loader, Filter
 } from 'lucide-react';
+import { API_URL } from '@/utils/api';
 
 interface AnalyticsData {
   dailyViews: { date: string; views: number }[];
@@ -14,8 +15,6 @@ interface AnalyticsData {
   hourlyData: { hour: number; views: number; clicks: number }[];
   topPages: { page: string; views: number; clicks: number; ctr: number }[];
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);

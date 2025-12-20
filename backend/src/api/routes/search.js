@@ -8,13 +8,13 @@ import { rateLimiter } from '../../middleware/rateLimiter.js';
 
 const router = express.Router();
 
-// Search products with advanced filters (rate limiter temporarily disabled)
-router.get('/', searchProducts);
+// Search products with advanced filters
+router.get('/', rateLimiter(), searchProducts);
 
-// Get search suggestions (rate limiter temporarily disabled)
-router.get('/suggestions', getSuggestions);
+// Get search suggestions
+router.get('/suggestions', rateLimiter(), getSuggestions);
 
-// Get popular keywords (rate limiter temporarily disabled)
-router.get('/keywords/popular', getPopularKeywords);
+// Get popular keywords
+router.get('/keywords/popular', rateLimiter(), getPopularKeywords);
 
 export default router;

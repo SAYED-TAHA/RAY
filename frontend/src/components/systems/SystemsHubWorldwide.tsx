@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useThemeContext } from '@/context/useThemeContext';
+import { useTheme } from '@/components/common/useTheme';
 import { 
   Store, Utensils, Home, Car, Stethoscope, Dumbbell, 
   Wrench, Shirt, ShoppingBag, Scissors, Pill, Briefcase, 
@@ -18,7 +18,7 @@ interface SystemsHubWorldwideProps {
 
 const SystemsHubWorldwide: React.FC<SystemsHubWorldwideProps> = ({ onSystemSelect, onBackToMarketplace }) => {
   const router = useRouter();
-  const { theme, language, toggleTheme, toggleLanguage } = useThemeContext();
+  const { theme, language, toggleTheme, toggleLanguage } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   

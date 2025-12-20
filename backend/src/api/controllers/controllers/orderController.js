@@ -20,11 +20,11 @@ export const getOrders = async (req, res) => {
     }
     
     if (req.query.paymentStatus) {
-      filter.paymentStatus = req.query.paymentStatus;
+      filter['payment.status'] = req.query.paymentStatus;
     }
     
     if (req.query.paymentMethod) {
-      filter.paymentMethod = req.query.paymentMethod;
+      filter['payment.method'] = req.query.paymentMethod;
     }
 
     // Date range filter
@@ -44,7 +44,7 @@ export const getOrders = async (req, res) => {
         { customerName: { $regex: req.query.search, $options: 'i' } },
         { customerEmail: { $regex: req.query.search, $options: 'i' } },
         { customerPhone: { $regex: req.query.search, $options: 'i' } },
-        { trackingNumber: { $regex: req.query.search, $options: 'i' } }
+        { 'delivery.trackingNumber': { $regex: req.query.search, $options: 'i' } }
       ];
     }
 
@@ -98,9 +98,7 @@ export const getOrderById = async (req, res) => {
 export const createOrder = async (req, res) => {
   try {
     const orderData = {
-      ...req.body,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      ...req.body
     };
 
     const order = new Order(orderData);
@@ -119,8 +117,7 @@ export const createOrder = async (req, res) => {
 export const updateOrder = async (req, res) => {
   try {
     const updates = {
-      ...req.body,
-      updatedAt: new Date()
+      ...req.body
     };
 
     const order = await Order.findByIdAndUpdate(
@@ -154,11 +151,11 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     if (status) order.status = status;
-    if (paymentStatus) order.paymentStatus = paymentStatus;
+    if (paymentStatus) order.payment.status = paymentStatus;
     
-    // Auto-update tracking info for shipped orders
-    if (status === 'shipped' && !order.trackingNumber) {
-      order.trackingNumber = `TRK${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // Auto-update tracking info for on-the-way orders
+    if (status === 'on-the-way' && !order.delivery.trackingNumber) {
+      order.delivery.trackingNumber = `TRK${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     }
     
     order.updatedAt = new Date();
@@ -199,15 +196,15 @@ export const getOrderStats = async (req, res) => {
         $group: {
           _id: null,
           totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: '$total' },
+          totalRevenue: { $sum: '$pricing.total' },
           pendingOrders: {
             $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
           },
           processingOrders: {
-            $sum: { $cond: [{ $eq: ['$status', 'processing'] }, 1, 0] }
+            $sum: { $cond: [{ $in: ['$status', ['confirmed', 'preparing', 'ready', 'on-the-way']] }, 1, 0] }
           },
           shippedOrders: {
-            $sum: { $cond: [{ $eq: ['$status', 'shipped'] }, 1, 0] }
+            $sum: { $cond: [{ $eq: ['$status', 'on-the-way'] }, 1, 0] }
           },
           deliveredOrders: {
             $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] }
@@ -216,7 +213,7 @@ export const getOrderStats = async (req, res) => {
             $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
           },
           paidOrders: {
-            $sum: { $cond: [{ $eq: ['$paymentStatus', 'paid'] }, 1, 0] }
+            $sum: { $cond: [{ $eq: ['$payment.status', 'paid'] }, 1, 0] }
           }
         }
       }

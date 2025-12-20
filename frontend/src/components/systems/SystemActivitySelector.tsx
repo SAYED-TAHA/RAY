@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useThemeContext } from '@/context/useThemeContext';
+import { useTheme } from '@/components/common/useTheme';
 import { 
   ArrowLeft, CheckCircle, Star, Users, Clock, CreditCard, 
   Package, TrendingUp, Shield, Award, ChevronRight, Play,
@@ -16,7 +16,7 @@ interface SystemActivitySelectorProps {
 
 const SystemActivitySelector: React.FC<SystemActivitySelectorProps> = ({ systemId, onBack }) => {
   const router = useRouter();
-  const { theme, language, toggleTheme } = useThemeContext();
+  const { theme, language, toggleTheme } = useTheme();
   const [selectedActivity, setSelectedActivity] = useState<string | null>(null);
   const [showPricing, setShowPricing] = useState(false);
 

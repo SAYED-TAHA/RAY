@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, Search, Filter, MapPin, Clock, Star, ChevronLeft, Loader } from 'lucide-react';
 import Link from 'next/link';
+import { API_URL } from '@/utils/api';
 
 interface Booking {
   id: string;
@@ -18,8 +19,6 @@ interface Booking {
   duration: string;
   paid: string;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const getStatusColor = (status: string) => {
   switch (status) {

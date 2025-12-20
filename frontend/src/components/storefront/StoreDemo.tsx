@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useThemeContext } from '@/context/useThemeContext';
+import { useTheme } from '@/components/common/useTheme';
 import { 
   Globe, Smartphone, ShoppingCart, Star, Heart, Search, Menu, X,
   ChevronLeft, ChevronRight, Filter, Grid, List, Package, Truck,
@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 const StoreDemo: React.FC = () => {
-  const { theme, language } = useThemeContext();
+  const { theme, language } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

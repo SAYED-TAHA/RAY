@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useThemeContext } from '@/context/useThemeContext';
+import { useTheme } from '@/components/common/useTheme';
 import { 
   ArrowLeft, Store, Upload, Palette, Layout, Image, FileText, 
   Globe, CreditCard, Package, Settings, Check, ChevronRight,
@@ -13,7 +13,7 @@ interface StoreSetupProps {
 
 const StoreSetup: React.FC<StoreSetupProps> = ({ templateId }) => {
   const router = useRouter();
-  const { theme, language } = useThemeContext();
+  const { theme, language } = useTheme();
   const [currentStep, setCurrentStep] = useState(1);
   const [storeData, setStoreData] = useState({
     name: '',

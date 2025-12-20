@@ -10,6 +10,7 @@ import {
 import { allCategories } from '../data';
 import CartIcon from '@/components/common/CartIcon';
 import { fastCart, cartEvents } from '@/utils/performance';
+import { useTheme } from '@/components/common/useTheme';
 
 interface HeaderProps {
   activeSystem?: string | null;
@@ -34,10 +35,8 @@ const Header: React.FC<HeaderProps> = ({
   const [cartTotal, setCartTotal] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
   const searchContainerRef = useRef<HTMLFormElement>(null);
-  // Mock theme and auth for now
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { theme, language, toggleTheme } = useTheme();
   const [user, setUser] = useState(null);
-  const [language, setLanguage] = useState('ar');
 
   // Mark as hydrated after mount
   useLayoutEffect(() => {
@@ -58,41 +57,6 @@ const Header: React.FC<HeaderProps> = ({
       unsubscribe();
     };
   }, [updateCartTotal, isHydrated]);
-  
-  // Initialize dark mode and language from localStorage
-  useEffect(() => {
-    const savedDarkMode = localStorage.getItem('ray_dark_mode') === 'true';
-    // Always default to Arabic ('ar')
-    const savedLanguage = localStorage.getItem('ray_language') || 'ar';
-    
-    setIsDarkMode(savedDarkMode);
-    setLanguage(savedLanguage);
-    
-    // Apply to DOM
-    if (savedDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    
-    // Ensure Arabic is set
-    document.documentElement.dir = 'rtl';
-    document.documentElement.lang = 'ar';
-    localStorage.setItem('ray_language', 'ar');
-  }, []);
-  
-  const toggleTheme = () => {
-    const newDarkMode = !isDarkMode;
-    setIsDarkMode(newDarkMode);
-    localStorage.setItem('ray_dark_mode', String(newDarkMode));
-    
-    // Apply to DOM
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
   
   // Language toggle disabled - keeping Arabic only for now
   // const toggleLanguage = () => {
@@ -355,7 +319,7 @@ const Header: React.FC<HeaderProps> = ({
                  className="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-all duration-300 active:scale-95 group"
                  aria-label="Toggle Dark Mode"
                >
-                 {isDarkMode ? 
+                 {theme === 'dark' ? 
                    <Sun className="w-5 h-5 group-hover:text-yellow-500 transition-colors" /> : 
                    <Moon className="w-5 h-5 group-hover:text-ray-blue transition-colors" />
                  }
@@ -459,7 +423,7 @@ const Header: React.FC<HeaderProps> = ({
                    onClick={toggleTheme}
                    className="p-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-full transition"
                 >
-                   {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                   {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </button>
                 <button 
                   onClick={() => setIsMenuOpen(false)}

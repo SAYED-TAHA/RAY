@@ -6,6 +6,7 @@ import {
   BarChart3, Eye, Settings, Image, Palette, Save, RotateCcw,
   TrendingUp, Users, ShoppingCart, Star, ArrowRight, Loader
 } from 'lucide-react';
+import { API_URL } from '@/utils/api';
 
 interface StorefrontStats {
   views: number;
@@ -21,8 +22,6 @@ interface RecentActivity {
   description: string;
   timestamp: string;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function StorefrontDashboard() {
   const [stats, setStats] = useState<StorefrontStats>({

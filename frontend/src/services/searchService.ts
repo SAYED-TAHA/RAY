@@ -2,7 +2,7 @@
  * خدمة البحث المتقدم مع الكلمات المفتاحية وتحسين محركات البحث
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/utils/api';
 
 export interface SearchOptions {
   query: string;

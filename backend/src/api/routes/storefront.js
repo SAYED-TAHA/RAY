@@ -10,6 +10,8 @@ import {
 import { uploadSingle, uploadMultiple } from '../middleware/uploadMiddleware.js';
 import { validateMerchantId, validateStorefrontConfig, errorHandler } from '../middleware/validationMiddleware.js';
 import { rateLimit } from '../middleware/rateLimitMiddleware.js';
+import { authenticateToken } from '../../middleware/auth.js';
+import { authorize } from '../../config/passport.js';
 
 const router = express.Router();
 
@@ -20,19 +22,52 @@ router.use(rateLimit);
 router.get('/:merchantId', validateMerchantId, getStorefrontConfig);
 
 // حفظ الإعدادات
-router.post('/:merchantId', validateMerchantId, validateStorefrontConfig, saveStorefrontConfig);
+router.post(
+  '/:merchantId',
+  authenticateToken,
+  authorize('merchant', 'admin'),
+  validateMerchantId,
+  validateStorefrontConfig,
+  saveStorefrontConfig
+);
 
 // إعادة تعيين الإعدادات
-router.post('/:merchantId/reset', validateMerchantId, resetStorefrontConfig);
+router.post(
+  '/:merchantId/reset',
+  authenticateToken,
+  authorize('merchant', 'admin'),
+  validateMerchantId,
+  resetStorefrontConfig
+);
 
 // رفع صورة البنر
-router.post('/:merchantId/banner', validateMerchantId, uploadSingle, uploadBannerImage);
+router.post(
+  '/:merchantId/banner',
+  authenticateToken,
+  authorize('merchant', 'admin'),
+  validateMerchantId,
+  uploadSingle,
+  uploadBannerImage
+);
 
 // رفع صور المعرض
-router.post('/:merchantId/gallery', validateMerchantId, uploadMultiple, uploadGalleryImages);
+router.post(
+  '/:merchantId/gallery',
+  authenticateToken,
+  authorize('merchant', 'admin'),
+  validateMerchantId,
+  uploadMultiple,
+  uploadGalleryImages
+);
 
 // حذف صورة من المعرض
-router.delete('/:merchantId/gallery/:imageIndex', validateMerchantId, deleteGalleryImage);
+router.delete(
+  '/:merchantId/gallery/:imageIndex',
+  authenticateToken,
+  authorize('merchant', 'admin'),
+  validateMerchantId,
+  deleteGalleryImage
+);
 
 // معالج الأخطاء
 router.use(errorHandler);

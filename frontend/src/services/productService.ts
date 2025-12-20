@@ -1,3 +1,5 @@
+import { API_URL } from '@/utils/api';
+
 export interface Product {
   id: string;
   name: string;
@@ -14,8 +16,6 @@ export interface Product {
   model3d?: string;
   dailySales?: number;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export async function fetchProducts(): Promise<Product[]> {
   try {

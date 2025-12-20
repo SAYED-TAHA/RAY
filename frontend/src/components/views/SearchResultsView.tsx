@@ -5,8 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Filter, Star, ArrowRight, SlidersHorizontal, Map, List, X, ArrowUpDown, Check, TrendingUp } from 'lucide-react';
 import SearchFilterModal from '../modals/SearchFilterModal';
 import SmartMapSearch from '../widgets/SmartMapSearch';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/utils/api';
 
 interface SearchResult {
   id: string;

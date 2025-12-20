@@ -2,7 +2,7 @@
 import React from 'react';
 import { Menu, Bell, Sun, Moon, Palette } from 'lucide-react';
 import { DashboardConfig, BusinessType } from './config';
-import { useTheme } from '../common/useTheme';
+import { useTheme } from '@/components/common/useTheme';
 
 interface HeaderProps {
   config: DashboardConfig;
@@ -21,7 +21,7 @@ const Header: React.FC<HeaderProps> = ({
   onNavigate,
   onMenuClick
 }) => {
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { theme: appTheme, toggleTheme } = useTheme();
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-sm p-4 flex justify-between items-center sticky top-0 z-20 border-b border-gray-100 dark:border-gray-800 transition-colors">
@@ -76,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300 transition active:scale-95"
           aria-label="Toggle Dark Mode"
         >
-          {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          {appTheme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
 
         <button 

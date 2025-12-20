@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Briefcase, Search, Filter, Calendar, MapPin, Clock, ExternalLink, ChevronLeft, Building, AlertCircle, Loader } from 'lucide-react';
 import Link from 'next/link';
+import { API_URL } from '@/utils/api';
 
 interface JobApplication {
   id: string;
@@ -17,8 +18,6 @@ interface JobApplication {
   jobId: string;
   department: string;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function JobApplicationsPage() {
   const [applications, setApplications] = useState<JobApplication[]>([]);

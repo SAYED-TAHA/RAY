@@ -7,6 +7,7 @@ import {
   Heart, ExternalLink, Users, Star, TrendingUp
 } from 'lucide-react';
 import Link from 'next/link';
+import { API_URL } from '@/utils/api';
 
 interface Job {
   id: string;
@@ -26,8 +27,6 @@ interface Job {
   urgent: boolean;
   featured: boolean;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const categories = [
   'الكل', 'مطاعم', 'صالونات', 'أندية رياضية', 'مراكز طبية', 

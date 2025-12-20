@@ -7,10 +7,10 @@ import Dashboard from './Dashboard';
 import SystemsHubWorldwide from './systems/SystemsHubWorldwide';
 import MerchantRegisterView from './views/MerchantRegisterView';
 // import { ViewState } from '../types'; // Removed - types.ts was deleted
-import { BusinessType, dashboardConfigs } from './dashboard/config';
-import { ThemeProvider } from './common/ThemeContext';
-import { ToastProvider } from './common/ToastContext';
-import { AuthProvider } from '../context/AuthContext';
+import { BusinessType } from './dashboard/config';
+import { ThemeProvider } from '@/components/common/ThemeContext';
+import { ToastProvider } from '@/components/common/ToastContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 const RayApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);

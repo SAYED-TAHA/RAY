@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, MapPin, Phone, MessageSquare, CheckCircle, Clock, ChefHat, Bike, Home, Package, Star, Loader } from 'lucide-react';
 import FeedbackModal from '../common/FeedbackModal';
+import { API_URL } from '@/utils/api';
 
 interface OrderTrackingViewProps {
   onBack: () => void;
@@ -22,8 +23,6 @@ interface Order {
     image: string;
   };
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const OrderTrackingView: React.FC<OrderTrackingViewProps> = ({ onBack, orderId }) => {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);

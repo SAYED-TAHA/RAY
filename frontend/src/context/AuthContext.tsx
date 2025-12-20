@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 import { AuthContext, AuthTokens, RegisterData, User } from './auth-context';
+import { API_URL } from '@/utils/api';
 
 // Configure axios defaults
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 axios.defaults.baseURL = API_URL;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -54,18 +54,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [tokens]);
 
   useEffect(() => {
-    // Check for stored tokens on mount
-    const storedTokens = localStorage.getItem('authTokens');
-    const storedUser = localStorage.getItem('authUser');
-    
-    if (storedTokens && storedUser) {
-      try {
-        setTokens(JSON.parse(storedTokens));
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Error parsing stored auth data:', error);
-        localStorage.removeItem('authTokens');
-        localStorage.removeItem('authUser');
+    // Check for stored tokens on mount (client-side only)
+    if (typeof window !== 'undefined') {
+      const storedTokens = localStorage.getItem('authTokens');
+      const storedUser = localStorage.getItem('authUser');
+      
+      if (storedTokens && storedUser) {
+        try {
+          setTokens(JSON.parse(storedTokens));
+          setUser(JSON.parse(storedUser));
+        } catch (error) {
+          console.error('Error parsing stored auth data:', error);
+          localStorage.removeItem('authTokens');
+          localStorage.removeItem('authUser');
+        }
       }
     }
     setLoading(false);
@@ -81,8 +83,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data.user);
       setTokens(data.tokens);
       
-      localStorage.setItem('authUser', JSON.stringify(data.user));
-      localStorage.setItem('authTokens', JSON.stringify(data.tokens));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('authUser', JSON.stringify(data.user));
+        localStorage.setItem('authTokens', JSON.stringify(data.tokens));
+      }
     } catch (error: any) {
       const message = error.response?.data?.message || 'Login failed';
       throw new Error(message);
@@ -101,8 +105,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data.user);
       setTokens(data.tokens);
       
-      localStorage.setItem('authUser', JSON.stringify(data.user));
-      localStorage.setItem('authTokens', JSON.stringify(data.tokens));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('authUser', JSON.stringify(data.user));
+        localStorage.setItem('authTokens', JSON.stringify(data.tokens));
+      }
     } catch (error: any) {
       const message = error.response?.data?.message || 'Registration failed';
       throw new Error(message);
@@ -118,8 +124,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     setUser(null);
     setTokens(null);
-    localStorage.removeItem('authUser');
-    localStorage.removeItem('authTokens');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authUser');
+      localStorage.removeItem('authTokens');
+    }
     
     // Clear axios default header
     delete axios.defaults.headers.common.Authorization;
@@ -142,7 +150,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const newTokens = await refreshTokens();
       setTokens(newTokens);
-      localStorage.setItem('authTokens', JSON.stringify(newTokens));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('authTokens', JSON.stringify(newTokens));
+      }
     } catch (error) {
       logout();
       throw error;
@@ -156,7 +166,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const updatedUser = responseData.data.user;
       
       setUser(updatedUser);
-      localStorage.setItem('authUser', JSON.stringify(updatedUser));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('authUser', JSON.stringify(updatedUser));
+      }
     } catch (error: any) {
       const message = error.response?.data?.message || 'Profile update failed';
       throw new Error(message);
@@ -183,7 +195,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 // Helper function to refresh tokens
 const refreshTokens = async () => {
-  const refreshToken = localStorage.getItem('authTokens') 
+  const refreshToken = typeof window !== 'undefined' && localStorage.getItem('authTokens') 
     ? JSON.parse(localStorage.getItem('authTokens')!).refreshToken 
     : null;
     

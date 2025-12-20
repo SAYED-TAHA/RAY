@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CreditCard, Plus, Edit, Trash2, Shield, Check, Loader } from 'lucide-react';
 import Link from 'next/link';
+import { API_URL } from '@/utils/api';
 
 interface PaymentMethod {
   id: string;
@@ -13,8 +14,6 @@ interface PaymentMethod {
   expiryDate?: string;
   isDefault: boolean;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const getIcon = (type: string) => {
   switch (type) {

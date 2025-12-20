@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Star, Calendar, Building, Filter, Search, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { API_URL } from '@/utils/api';
 
 interface Review {
   id: string;
@@ -15,8 +16,6 @@ interface Review {
   category: string;
   helpful: number;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);

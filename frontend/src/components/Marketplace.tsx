@@ -9,7 +9,6 @@ import Footer from './layout/Footer';
 import MobileBottomNav from './layout/MobileBottomNav';
 import HomePage from './pages/HomePage';
 import { MarketplaceProvider } from '../context/MarketplaceContext';
-import { ThemeProvider } from '../context/ThemeContext'; 
 
 // Listings
 const RestaurantListing = dynamic(() => import('./listings/RestaurantListing'), { ssr: false });
@@ -310,11 +309,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ onGoToSystems, onProductClick
   );
 
   return (
-    <ThemeProvider>
-      <MarketplaceProvider>
-          <MainContent />
-      </MarketplaceProvider>
-    </ThemeProvider>
+    <MarketplaceProvider>
+      <MainContent />
+    </MarketplaceProvider>
   );
 };
 

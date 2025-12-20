@@ -1,4 +1,5 @@
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '../utils/jwt.js';
+import User from '../models/User.js';
 
 // Authentication middleware
 export const authenticateToken = (req, res, next) => {
@@ -9,13 +10,32 @@ export const authenticateToken = (req, res, next) => {
     return res.status(401).json({ message: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret', (err, user) => {
-    if (err) {
+  (async () => {
+    try {
+      const decoded = verifyToken(token);
+      const user = await User.findById(decoded.userId).select('role isActive isEmailVerified subscription');
+
+      if (!user) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      if (!user.isActive) {
+        return res.status(403).json({ message: 'Account is deactivated' });
+      }
+
+      req.user = {
+        ...decoded,
+        id: user._id,
+        userId: user._id,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+        subscription: user.subscription?.plan || decoded.subscription
+      };
+      next();
+    } catch (err) {
       return res.status(403).json({ message: 'Invalid or expired token' });
     }
-    req.user = user;
-    next();
-  });
+  })();
 };
 
 // Admin role check middleware

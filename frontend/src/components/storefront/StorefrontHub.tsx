@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useThemeContext } from '@/context/useThemeContext';
+import { useTheme } from '@/components/common/useTheme';
 import { 
   Store, ShoppingCart, Globe, Smartphone, Palette, Settings, 
   TrendingUp, Users, Package, CreditCard, Star, ArrowRight,
@@ -10,7 +10,7 @@ import {
 
 const StorefrontHub: React.FC = () => {
   const router = useRouter();
-  const { theme, language } = useThemeContext();
+  const { theme, language } = useTheme();
   const [activeTab, setActiveTab] = useState('overview');
 
   const stores = [

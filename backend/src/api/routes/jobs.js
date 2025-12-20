@@ -1,10 +1,12 @@
 import express from 'express';
 import Job from '../../models/Job.js';
+import { authenticateToken, authorize } from '../../middleware/auth.js';
+import { rateLimiter, strictRateLimiter } from '../../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 // جلب جميع الوظائف
-router.get('/', (req, res) => {
+router.get('/', rateLimiter, (req, res) => {
   (async () => {
     try {
       const jobs = await Job.find({}).sort({ createdAt: -1 });
@@ -17,7 +19,7 @@ router.get('/', (req, res) => {
 });
 
 // جلب وظيفة واحدة
-router.get('/:id', (req, res) => {
+router.get('/:id', rateLimiter, (req, res) => {
   (async () => {
     try {
       const job = await Job.findById(req.params.id);
@@ -33,7 +35,7 @@ router.get('/:id', (req, res) => {
 });
 
 // إضافة وظيفة جديدة
-router.post('/', (req, res) => {
+router.post('/', authenticateToken, authorize('admin'), strictRateLimiter, (req, res) => {
   (async () => {
     try {
       const job = await Job.create(req.body);

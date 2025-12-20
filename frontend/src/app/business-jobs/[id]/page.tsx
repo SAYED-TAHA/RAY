@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import { API_URL } from '@/utils/api';
 
 interface Job {
   id: string;
@@ -38,8 +39,6 @@ interface Job {
     industry: string;
   };
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function JobDetailPage() {
   const router = useRouter();

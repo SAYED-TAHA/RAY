@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '@/utils/api';
 
 const getAccessToken = (): string | null => {
   if (typeof window === 'undefined') return null;

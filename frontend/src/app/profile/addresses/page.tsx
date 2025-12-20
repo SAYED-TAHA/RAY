@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Plus, Edit, Trash2, Home, Building, Briefcase, Loader } from 'lucide-react';
 import Link from 'next/link';
+import { API_URL } from '@/utils/api';
 
 interface Address {
   id: string;
@@ -17,8 +18,6 @@ interface Address {
   postalCode: string;
   isDefault: boolean;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const getIcon = (type: string) => {
   switch (type) {

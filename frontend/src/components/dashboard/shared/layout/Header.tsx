@@ -3,7 +3,7 @@ import { Menu, Bell, LayoutGrid, Search, Sun, Moon, Palette } from 'lucide-react
 import Link from 'next/link';
 import { DashboardConfig, BusinessType, colorClasses } from '../../config';
 import CommandPalette from './CommandPalette';
-import { useTheme } from '../../../common/useTheme';
+import { useTheme } from '@/components/common/useTheme';
 
 interface HeaderProps {
   config: DashboardConfig;
@@ -18,12 +18,12 @@ const Header: React.FC<HeaderProps> = ({
   config, 
   currentBusinessType, 
   setCurrentBusinessType, 
-  theme, 
+  theme,
   onNavigate,
   onMenuClick 
 }) => {
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { theme: appTheme, toggleTheme } = useTheme();
 
   // Listen for Ctrl+K
   useEffect(() => {
@@ -84,7 +84,7 @@ const Header: React.FC<HeaderProps> = ({
             className="p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-600 dark:text-gray-300 transition active:scale-95"
             aria-label="Toggle Dark Mode"
           >
-            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {appTheme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
 
           <button 

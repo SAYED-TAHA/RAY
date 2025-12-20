@@ -1,10 +1,12 @@
 import express from 'express';
 import Offer from '../../models/Offer.js';
+import { authenticateToken, authorize } from '../../middleware/auth.js';
+import { rateLimiter, strictRateLimiter } from '../../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 // جلب كل العروض
-router.get('/', (req, res) => {
+router.get('/', rateLimiter, (req, res) => {
   (async () => {
     try {
       const filter = {};
@@ -24,7 +26,7 @@ router.get('/', (req, res) => {
 });
 
 // جلب العروض المميزة
-router.get('/featured', (req, res) => {
+router.get('/featured', rateLimiter, (req, res) => {
   (async () => {
     try {
       const offers = await Offer.find({ featured: true }).sort({ createdAt: -1 }).limit(4);
@@ -37,7 +39,7 @@ router.get('/featured', (req, res) => {
 });
 
 // جلب عرض واحد
-router.get('/:id', (req, res) => {
+router.get('/:id', rateLimiter, (req, res) => {
   (async () => {
     try {
       const offer = await Offer.findById(req.params.id);
@@ -53,7 +55,7 @@ router.get('/:id', (req, res) => {
 });
 
 // إضافة عرض جديد (للإدمن)
-router.post('/', (req, res) => {
+router.post('/', authenticateToken, authorize('admin'), strictRateLimiter, (req, res) => {
   (async () => {
     try {
       const { title, shop, image, price, oldPrice, rating, tag, category, merchantId, featured } = req.body;
@@ -84,7 +86,7 @@ router.post('/', (req, res) => {
 });
 
 // تحديث عرض
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticateToken, authorize('admin'), strictRateLimiter, (req, res) => {
   (async () => {
     try {
       const offer = await Offer.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
@@ -100,7 +102,7 @@ router.put('/:id', (req, res) => {
 });
 
 // حذف عرض
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticateToken, authorize('admin'), strictRateLimiter, (req, res) => {
   (async () => {
     try {
       const offer = await Offer.findByIdAndDelete(req.params.id);

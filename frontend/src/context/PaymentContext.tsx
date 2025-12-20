@@ -13,6 +13,7 @@ import {
   processInvoicePayment,
   calculateWalletBalance
 } from '../services/paymentService';
+import { API_URL } from '@/utils/api';
 
 interface PaymentContextType {
   paymentMethods: PaymentMethod[];
@@ -30,8 +31,6 @@ interface PaymentContextType {
 }
 
 const PaymentContext = createContext<PaymentContextType | undefined>(undefined);
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const PaymentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);

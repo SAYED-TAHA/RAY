@@ -5,10 +5,11 @@ import {
   getSalesReport
 } from '../controllers/controllers/analyticsController.js';
 import { authenticateToken, requireAdmin } from '../../middleware/auth.js';
+import { rateLimiter, strictRateLimiter } from '../../middleware/rateLimiter.js';
 
 const router = express.Router();
 
-router.post('/search', async (req, res) => {
+router.post('/search', rateLimiter, async (req, res) => {
   try {
     res.json({ success: true });
   } catch (error) {
@@ -17,8 +18,8 @@ router.post('/search', async (req, res) => {
 });
 
 // Protected admin routes
-router.get('/', authenticateToken, requireAdmin, getAnalytics);
-router.get('/dashboard', authenticateToken, requireAdmin, getDashboardOverview);
-router.get('/sales', authenticateToken, requireAdmin, getSalesReport);
+router.get('/', authenticateToken, requireAdmin, strictRateLimiter, getAnalytics);
+router.get('/dashboard', authenticateToken, requireAdmin, strictRateLimiter, getDashboardOverview);
+router.get('/sales', authenticateToken, requireAdmin, strictRateLimiter, getSalesReport);
 
 export default router;

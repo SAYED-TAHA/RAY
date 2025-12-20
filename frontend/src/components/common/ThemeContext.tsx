@@ -2,50 +2,65 @@
 
 import React, { useEffect, useState } from 'react';
 
+type Theme = 'light' | 'dark';
+type Language = 'ar' | 'en';
+
 import { ThemeContext } from './theme-context';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [theme, setTheme] = useState<Theme>('light');
+  const [language, setLanguage] = useState<Language>('ar');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Check local storage or system preference on mount
-    const savedTheme = localStorage.getItem('ray_theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    // Check local storage or system preference on mount (client-side only)
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme') as Theme;
+      const savedLanguage = localStorage.getItem('language') as Language;
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.classList.remove('dark');
+      if (savedTheme) {
+        setTheme(savedTheme);
+      } else if (systemPrefersDark) {
+        setTheme('dark');
+      }
+
+      if (savedLanguage) {
+        setLanguage(savedLanguage);
+      }
     }
   }, []);
 
-  const toggleTheme = () => {
-    setIsDarkMode((prev) => {
-      const newMode = !prev;
-      if (newMode) {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (theme === 'dark') {
         document.documentElement.classList.add('dark');
-        localStorage.setItem('ray_theme', 'dark');
       } else {
         document.documentElement.classList.remove('dark');
-        localStorage.setItem('ray_theme', 'light');
       }
-      return newMode;
-    });
+      localStorage.setItem('theme', theme);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = language;
+      localStorage.setItem('language', language);
+    }
+  }, [language]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
-  // Prevent hydration mismatch by waiting for mount to render specific theme-dependent UI if needed,
-  // but here we provide the context immediately so the app tree structure is stable.
-  // The 'isDarkMode' state will be accurate after the first effect.
+  const toggleLanguage = () => {
+    setLanguage(prev => prev === 'ar' ? 'en' : 'ar');
+  };
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-      {/* We render children even if not mounted to allow SEO/Initial HTML, 
-          but specific icons relying on isDarkMode might flicker slightly on first load without SSR support for theme. 
-          Given this is a Client Component wrapper, it's acceptable. */}
+    <ThemeContext.Provider value={{ theme, language, toggleTheme, toggleLanguage, setTheme, setLanguage }}>
       {children}
     </ThemeContext.Provider>
   );

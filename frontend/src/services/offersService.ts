@@ -3,7 +3,7 @@
  * التواصل مع API للحصول على العروض والتعامل معها
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL, getHeaders } from '@/utils/api';
 
 export interface Offer {
   id: string;
@@ -55,7 +55,7 @@ export const createOffer = async (offer: Omit<Offer, 'id'>): Promise<Offer | nul
   try {
     const response = await fetch(`${API_URL}/api/offers`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders('application/json'),
       body: JSON.stringify(offer)
     });
     if (!response.ok) {
@@ -75,7 +75,7 @@ export const updateOffer = async (id: string, offer: Partial<Offer>): Promise<Of
   try {
     const response = await fetch(`${API_URL}/api/offers/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeaders('application/json'),
       body: JSON.stringify(offer)
     });
     if (!response.ok) {
@@ -94,7 +94,8 @@ export const updateOffer = async (id: string, offer: Partial<Offer>): Promise<Of
 export const deleteOffer = async (id: string): Promise<boolean> => {
   try {
     const response = await fetch(`${API_URL}/api/offers/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getHeaders('application/json')
     });
     if (!response.ok) {
       throw new Error('فشل حذف العرض');

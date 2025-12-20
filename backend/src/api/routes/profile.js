@@ -1,6 +1,9 @@
 import express from 'express';
+import { authenticateToken } from '../../middleware/auth.js';
 
 const router = express.Router();
+
+router.use(authenticateToken);
 
 // بيانات الملف الشخصي (يمكن استبدالها بـ MongoDB لاحقاً)
 const profileData = {

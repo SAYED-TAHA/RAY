@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Sparkles, Loader } from 'lucide-react';
 import Image from 'next/image';
 import ProductCard from '../cards/ProductCard';
+import { API_URL } from '@/utils/api';
 
 interface Offer {
   id: string;
@@ -20,8 +21,6 @@ interface HomePageProps {
   onProductClick?: (id: string) => void;
   onNavigate?: (view: string, params?: any) => void;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const HomePage: React.FC<HomePageProps> = ({ onProductClick, onNavigate }) => {
   const [greeting, setGreeting] = useState('أهلاً بك');

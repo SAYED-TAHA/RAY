@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserActivity, ACTIVITY_ROUTES, buildNavigationPath } from '../services/registrationService';
+import { API_URL } from '@/utils/api';
 
 interface NavigationContextType {
   userProfile: UserProfile | null;
@@ -19,8 +20,6 @@ interface NavigationContextType {
 }
 
 const NavigationContext = createContext<NavigationContextType | undefined>(undefined);
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);

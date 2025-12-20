@@ -1,10 +1,12 @@
 import express from 'express';
 import DirectoryMerchant from '../../models/DirectoryMerchant.js';
+import { authenticateToken, authorize } from '../../middleware/auth.js';
+import { rateLimiter, strictRateLimiter } from '../../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 // جلب المتاجر حسب الفئة (للتسوق)
-router.get('/shops', (req, res) => {
+router.get('/shops', rateLimiter, (req, res) => {
   (async () => {
     try {
       const category = req.query.category;
@@ -24,7 +26,7 @@ router.get('/shops', (req, res) => {
 });
 
 // جلب جميع المتاجر
-router.get('/', (req, res) => {
+router.get('/', rateLimiter, (req, res) => {
   (async () => {
     try {
       const filter = {};
@@ -41,7 +43,7 @@ router.get('/', (req, res) => {
 });
 
 // جلب متجر واحد
-router.get('/:id', (req, res) => {
+router.get('/:id', rateLimiter, (req, res) => {
   (async () => {
     try {
       const merchant = await DirectoryMerchant.findById(req.params.id);
@@ -57,7 +59,7 @@ router.get('/:id', (req, res) => {
 });
 
 // جلب عروض المتجر
-router.get('/:id/offers', (req, res) => {
+router.get('/:id/offers', rateLimiter, (req, res) => {
   (async () => {
     try {
       const merchant = await DirectoryMerchant.findById(req.params.id).select('offers');
@@ -73,7 +75,7 @@ router.get('/:id/offers', (req, res) => {
 });
 
 // جلب منتجات الخصومات للمتجر
-router.get('/:id/discounts', (req, res) => {
+router.get('/:id/discounts', rateLimiter, (req, res) => {
   (async () => {
     try {
       const merchant = await DirectoryMerchant.findById(req.params.id).select('discounts');
@@ -89,7 +91,7 @@ router.get('/:id/discounts', (req, res) => {
 });
 
 // جلب طاولات المطعم
-router.get('/:id/tables', (req, res) => {
+router.get('/:id/tables', rateLimiter, (req, res) => {
   (async () => {
     try {
       const merchant = await DirectoryMerchant.findById(req.params.id).select('tables');

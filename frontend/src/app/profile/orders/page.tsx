@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Package, Search, Filter, Calendar, MapPin, CreditCard, Star, ChevronLeft, DollarSign, Loader } from 'lucide-react';
 import Link from 'next/link';
+import { API_URL } from '@/utils/api';
 
 interface Order {
   id: string;
@@ -14,8 +15,6 @@ interface Order {
   merchant: string;
   merchantId: string;
 }
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 const getStatusColor = (status: string) => {
   switch (status) {

@@ -1,16 +1,8 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('token');
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-};
+import { API_URL, getHeaders } from '@/utils/api';
 
 export const fetchJobs = async () => {
   const response = await fetch(`${API_URL}/api/jobs`, {
-    headers: getAuthHeaders()
+    headers: getHeaders('application/json')
   });
   if (!response.ok) {
     throw new Error('فشل في جلب الوظائف');
@@ -20,7 +12,7 @@ export const fetchJobs = async () => {
 
 export const fetchJobById = async (id: string) => {
   const response = await fetch(`${API_URL}/api/jobs/${id}`, {
-    headers: getAuthHeaders()
+    headers: getHeaders('application/json')
   });
   if (!response.ok) {
     throw new Error('فشل في جلب الوظيفة');
@@ -31,7 +23,7 @@ export const fetchJobById = async (id: string) => {
 export const createJob = async (jobData: any) => {
   const response = await fetch(`${API_URL}/api/jobs`, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: getHeaders('application/json'),
     body: JSON.stringify(jobData)
   });
   if (!response.ok) {

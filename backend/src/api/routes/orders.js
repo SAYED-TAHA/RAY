@@ -13,10 +13,10 @@ import { validateObjectId } from '../../middleware/validation.js';
 
 const router = express.Router();
 
-// Public routes
-router.get('/', getOrders);
-router.get('/stats', getOrderStats);
-router.get('/:id', validateObjectId, getOrderById);
+// Protected admin routes
+router.get('/', authenticateToken, requireAdmin, getOrders);
+router.get('/stats', authenticateToken, requireAdmin, getOrderStats);
+router.get('/:id', authenticateToken, requireAdmin, validateObjectId, getOrderById);
 
 // Protected admin routes
 router.post('/', 
