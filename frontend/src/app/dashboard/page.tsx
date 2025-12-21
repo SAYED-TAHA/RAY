@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Dashboard from '@/components/Dashboard';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BusinessType } from '@/components/dashboard/config';
 import { ThemeProvider } from '@/components/common/ThemeContext';
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const typeParam = searchParams.get('type') as BusinessType;
@@ -32,5 +32,13 @@ export default function DashboardPage() {
         onLogout={() => router.push('/')} 
       />
     </ThemeProvider>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div>جاري التحميل...</div>}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }

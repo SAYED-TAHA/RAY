@@ -378,7 +378,7 @@ const getStatusLabel = (status: string) => {
                       <div>
                         <h4 className="font-bold text-yellow-900 mb-1">تأكيد سحب الطلب</h4>
                         <p className="text-yellow-700 text-sm">
-                          هل أنت متأكد من سحب طلبك لمنصب "{selectedApplication?.jobTitle}" في شركة "{selectedApplication?.company}"؟
+                          هل أنت متأكد من سحب طلبك لمنصب &quot;{selectedApplication?.jobTitle}&quot; في شركة &quot;{selectedApplication?.company}&quot;؟
                           هذا الإجراء لا يمكن التراجع عنه.
                         </p>
                       </div>

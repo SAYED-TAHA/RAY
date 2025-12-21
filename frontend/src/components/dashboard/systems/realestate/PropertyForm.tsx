@@ -1,4 +1,6 @@
 
+"use client";
+
 import React, { useState } from 'react';
 import { 
   Home, MapPin, DollarSign, Ruler, Bed, Bath, Camera, 

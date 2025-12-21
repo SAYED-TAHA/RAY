@@ -1,4 +1,6 @@
 
+"use client";
+
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, ShoppingCart, Tag, ClipboardList, Users, 
@@ -114,7 +116,7 @@ const RetailDashboard: React.FC<Props> = ({ onLogout, onSwitchType, type = 'reta
       default:
         return isPharmacy ?
           <PharmacyOverview /> :
-          <RetailOverview />;
+          <RetailOverview setActiveTab={setActiveTab} />;
     }
   };
 

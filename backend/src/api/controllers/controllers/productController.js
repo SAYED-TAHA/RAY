@@ -16,6 +16,11 @@ export const getProducts = async (req, res) => {
     
     // Build filter
     const filter = {};
+    if (req.user?.role === 'merchant') {
+      filter.merchantId = req.user.id;
+    } else if (req.query.merchantId && /^[0-9a-fA-F]{24}$/.test(req.query.merchantId)) {
+      filter.merchantId = req.query.merchantId;
+    }
     if (req.query.category) filter.category = req.query.category;
     if (req.query.status) filter.status = req.query.status;
     if (req.query.minStock !== undefined) filter.stock = { $gte: parseInt(req.query.minStock) };
@@ -58,6 +63,11 @@ export const getProductById = async (req, res) => {
     
     const product = await Product.findById(id).select('-__v');
     if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    // Multi-tenant security: merchants can only access their own products
+    if (req.user?.role === 'merchant' && String(product.merchantId || '') !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
     
     logActivity('FETCH_PRODUCT', req.user?.id || 'anonymous', id);
     res.status(200).json(product);
@@ -70,7 +80,7 @@ export const getProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     // Security: Input validation is handled by middleware
-    const { name, price, barcode, sku, category, stock, minStock, status, dailySales } = req.body;
+    const { name, price, barcode, sku, category, stock, minStock, status, dailySales, description, image, tags } = req.body;
     
     // Security: Check for duplicate SKU/barcode
     if (sku) {
@@ -88,11 +98,15 @@ export const createProduct = async (req, res) => {
     }
     
     const product = new Product({
+      merchantId: req.user?.role === 'merchant' ? req.user.id : (req.body.merchantId || undefined),
       name,
       price,
       barcode: barcode || undefined,
       sku: sku || undefined,
       category: category || undefined,
+      description: description || undefined,
+      image: image || undefined,
+      tags: Array.isArray(tags) ? tags : undefined,
       stock: stock || 0,
       minStock: minStock || 10,
       status: status || 'active',
@@ -131,6 +145,16 @@ export const updateProduct = async (req, res) => {
     const existingProduct = await Product.findById(id);
     if (!existingProduct) {
       return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Multi-tenant security: merchants can only update their own products
+    if (req.user?.role === 'merchant' && String(existingProduct.merchantId || '') !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
+    // Multi-tenant security: prevent tenant escape
+    if (req.user?.role === 'merchant') {
+      delete req.body.merchantId;
     }
     
     // Security: Check for duplicate SKU/barcode (excluding current product)
@@ -184,6 +208,11 @@ export const deleteProduct = async (req, res) => {
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Multi-tenant security: merchants can only delete their own products
+    if (req.user?.role === 'merchant' && String(product.merchantId || '') !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
     }
     
     // Security: Check if product can be deleted (e.g., no active orders)

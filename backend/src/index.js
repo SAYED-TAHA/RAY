@@ -1,7 +1,7 @@
-
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -9,7 +9,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables FIRST
-dotenv.config({ path: path.join(__dirname, '.env.local') });
+const envPathRoot = path.join(__dirname, '../.env.local');
+const envPathSrc = path.join(__dirname, '.env.local');
+const envPath = fs.existsSync(envPathRoot) ? envPathRoot : envPathSrc;
+dotenv.config({ path: envPath });
 
 // Import after loading environment variables
 import connectDB from './config/mongodb.js';

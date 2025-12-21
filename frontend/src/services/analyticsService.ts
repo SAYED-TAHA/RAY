@@ -4,6 +4,7 @@
  */
 
 import { API_URL } from '@/utils/api';
+import { getDataMode, localComputeAnalytics, localComputeDashboardOverview, localComputeSalesReport } from './localDataStore';
 
 const getAccessToken = (): string | null => {
   if (typeof window === 'undefined') return null;
@@ -103,6 +104,10 @@ export interface SalesReportData {
  */
 export const fetchAnalytics = async (period: string = 'month', startDate?: string, endDate?: string): Promise<AnalyticsData> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localComputeAnalytics(period, startDate, endDate);
+    }
+
     const params = new URLSearchParams();
     params.append('period', period);
     if (startDate) params.append('startDate', startDate);
@@ -126,7 +131,7 @@ export const fetchAnalytics = async (period: string = 'month', startDate?: strin
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب بيانات التحليلات:', error);
-    throw error;
+    return await localComputeAnalytics(period, startDate, endDate);
   }
 };
 
@@ -135,6 +140,10 @@ export const fetchAnalytics = async (period: string = 'month', startDate?: strin
  */
 export const fetchDashboardOverview = async (): Promise<DashboardOverview> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localComputeDashboardOverview();
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = {};
     
@@ -153,7 +162,7 @@ export const fetchDashboardOverview = async (): Promise<DashboardOverview> => {
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب نظرة لوحة التحكم:', error);
-    throw error;
+    return await localComputeDashboardOverview();
   }
 };
 
@@ -166,6 +175,10 @@ export const fetchSalesReport = async (
   groupBy: string = 'day'
 ): Promise<SalesReportData> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localComputeSalesReport(startDate, endDate, groupBy);
+    }
+
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
@@ -189,6 +202,6 @@ export const fetchSalesReport = async (
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب تقرير المبيعات:', error);
-    throw error;
+    return await localComputeSalesReport(startDate, endDate, groupBy);
   }
 };

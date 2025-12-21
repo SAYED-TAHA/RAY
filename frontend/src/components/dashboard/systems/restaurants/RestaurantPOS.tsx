@@ -1,20 +1,61 @@
 
-import React, { useState } from 'react';
-import { Search, Plus, Minus, ChefHat, CreditCard, Banknote, Utensils, X, ShoppingBag, ChevronUp, Percent, Clock, AlertCircle } from 'lucide-react';
-
-const products = [
-  { id: 1, name: 'برجر كلاسيك', price: 80, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200', category: 'برجر' },
-  { id: 2, name: 'بيتزا مارجريتا', price: 120, image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=200', category: 'بيتزا' },
-  { id: 3, name: 'كولا بارد', price: 20, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=200', category: 'مشروبات' },
-  { id: 4, name: 'بطاطس مقلية', price: 40, image: 'https://images.unsplash.com/photo-1573080496987-a199f8cd4054?w=200', category: 'مقبلات' },
-  { id: 5, name: 'تشيز كيك', price: 65, image: 'https://images.unsplash.com/photo-1508737027454-e6454ef45afd?w=200', category: 'حلوى' },
-  { id: 6, name: 'قهوة لاتيه', price: 45, image: 'https://images.unsplash.com/photo-1541167760496-1628856ab772?w=200', category: 'مشروبات' },
-];
+import React, { useEffect, useMemo, useState } from 'react';
+import { Search, Plus, Minus, ChefHat, CreditCard, Banknote, Utensils, ShoppingBag, ChevronUp } from 'lucide-react';
+import { fetchProducts, type Product } from '@/services/productsService';
+import { createOrder } from '@/services/ordersService';
 
 const categories = ['الكل', 'برجر', 'بيتزا', 'مشروبات', 'مقبلات', 'حلوى'];
 
+type POSProduct = {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  category: string;
+  description?: string;
+};
+
+const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200';
+
+const toPOSProduct = (p: Product): POSProduct => ({
+  id: p._id,
+  name: p.name,
+  price: Number(p.price ?? 0),
+  image: p.image || DEFAULT_IMAGE,
+  category: p.category || 'الكل',
+  description: p.description
+});
+
+const getCustomerId = (): string => {
+  if (typeof window === 'undefined') return 'local_customer';
+  const raw = localStorage.getItem('authUser');
+  if (!raw) return 'local_customer';
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed?.id || parsed?._id || 'local_customer';
+  } catch {
+    return 'local_customer';
+  }
+};
+
+const getMerchantId = (): string => {
+  if (typeof window === 'undefined') return 'local_merchant';
+  const raw = localStorage.getItem('authUser');
+  if (!raw) return 'local_merchant';
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed?.id || parsed?._id || 'local_merchant';
+  } catch {
+    return 'local_merchant';
+  }
+};
+
 const RestaurantPOS: React.FC = () => {
-  const [cart, setCart] = useState<{product: any, qty: number}[]>([]);
+  const [products, setProducts] = useState<POSProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsSearch, setProductsSearch] = useState('');
+
+  const [cart, setCart] = useState<{product: POSProduct, qty: number}[]>([]);
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [selectedTable, setSelectedTable] = useState('T-01');
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
@@ -22,7 +63,29 @@ const RestaurantPOS: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'both'>('cash');
 
-  const addToCart = (product: any) => {
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setProductsLoading(true);
+    fetchProducts({ limit: 200 })
+      .then(res => {
+        if (!mounted) return;
+        setProducts((res.products || []).map(toPOSProduct));
+      })
+      .catch(() => {
+        // productsService will already fall back to local store when needed
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setProductsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const addToCart = (product: POSProduct) => {
     setCart(prev => {
       const existing = prev.find(p => p.product.id === product.id);
       if (existing) return prev.map(p => p.product.id === product.id ? {...p, qty: p.qty + 1} : p);
@@ -30,7 +93,7 @@ const RestaurantPOS: React.FC = () => {
     });
   };
 
-  const updateQty = (id: number, delta: number) => {
+  const updateQty = (id: string, delta: number) => {
     setCart(prev => prev.map(p => {
       if (p.product.id === id) return {...p, qty: Math.max(0, p.qty + delta)};
       return p;
@@ -44,6 +107,64 @@ const RestaurantPOS: React.FC = () => {
   const total = afterDiscount + tax;
   const itemsCount = cart.reduce((sum, item) => sum + item.qty, 0);
 
+  const filteredProducts = useMemo(() => {
+    return products
+      .filter(p => activeCategory === 'الكل' || p.category === activeCategory)
+      .filter(p => p.name.toLowerCase().includes(productsSearch.toLowerCase()));
+  }, [activeCategory, products, productsSearch]);
+
+  const submitToKitchen = async () => {
+    if (cart.length === 0 || orderSubmitting) return;
+
+    setOrderSubmitting(true);
+    try {
+      const customerId = getCustomerId();
+      const merchantId = getMerchantId();
+
+      const order = await createOrder({
+        orderNumber: `POS${Date.now()}`,
+        customerId,
+        merchantId,
+        type: 'product',
+        status: 'preparing',
+        items: cart.map(c => ({
+          type: 'product',
+          itemId: c.product.id,
+          name: c.product.name,
+          description: c.product.description,
+          price: c.product.price,
+          quantity: c.qty,
+          subtotal: c.product.price * c.qty
+        })),
+        pricing: {
+          subtotal,
+          tax,
+          deliveryFee: 0,
+          serviceFee: 0,
+          discount: discountAmount,
+          total
+        },
+        payment: {
+          method: paymentMethod === 'card' ? 'card' : 'cash',
+          status: 'pending'
+        },
+        delivery: {
+          type: 'on-site',
+          deliveryNotes: notes || undefined
+        },
+        booking: undefined,
+        timeline: []
+      });
+
+      if (order) {
+        setCart([]);
+        setIsMobileCartOpen(false);
+      }
+    } finally {
+      setOrderSubmitting(false);
+    }
+  };
+
   const CartPanel = () => (
     <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-gray-800 transition-colors">
         {/* Table Selector */}
@@ -55,7 +176,15 @@ const RestaurantPOS: React.FC = () => {
                <h3 className="font-bold text-lg">{selectedTable}</h3>
              </div>
            </div>
-           <button className="text-xs bg-orange-600 px-3 py-2 rounded-lg hover:bg-orange-700 transition font-bold active:scale-95">تغيير الطاولة</button>
+           <button
+             onClick={() => {
+               const next = window.prompt('رقم الطاولة', selectedTable);
+               if (next && next.trim()) setSelectedTable(next.trim());
+             }}
+             className="text-xs bg-orange-600 px-3 py-2 rounded-lg hover:bg-orange-700 transition font-bold active:scale-95"
+           >
+             تغيير الطاولة
+           </button>
         </div>
         
         {/* Cart Items */}
@@ -85,12 +214,50 @@ const RestaurantPOS: React.FC = () => {
           )}
         </div>
 
+        {/* Notes / Discount / Payment */}
+        <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <label className="text-xs font-bold text-gray-600 dark:text-gray-300">خصم %</label>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+              className="w-24 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <label className="text-xs font-bold text-gray-600 dark:text-gray-300">طريقة الدفع</label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as any)}
+              className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500"
+            >
+              <option value="cash">كاش</option>
+              <option value="card">فيزا</option>
+              <option value="both">كاش + فيزا</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1">ملاحظات للمطبخ</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="مثال: بدون بصل"
+              className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500 resize-none h-16"
+            />
+          </div>
+        </div>
+
         {/* Totals & Actions */}
         <div className="p-5 bg-white dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] pb-safe">
           <div className="space-y-2 mb-4">
             <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
               <span>المجموع الفرعي</span>
-              <span>{total.toFixed(2)}</span>
+              <span>{subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
               <span>الضريبة والخدمة (14%)</span>
@@ -98,14 +265,14 @@ const RestaurantPOS: React.FC = () => {
             </div>
             <div className="flex justify-between text-xl font-black text-gray-900 dark:text-white pt-2 border-t border-dashed border-gray-200 dark:border-gray-700">
               <span>الإجمالي</span>
-              <span>{(total + tax).toFixed(2)} ج.م</span>
+              <span>{total.toFixed(2)} ج.م</span>
             </div>
           </div>
           
           <div className="grid grid-cols-2 gap-3">
-             <button className="col-span-2 py-3 bg-gray-800 dark:bg-gray-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black dark:hover:bg-gray-600 transition shadow-md active:scale-95">
+             <button onClick={submitToKitchen} disabled={cart.length === 0 || orderSubmitting} className="col-span-2 py-3 bg-gray-800 dark:bg-gray-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black dark:hover:bg-gray-600 transition shadow-md active:scale-95 disabled:opacity-50">
                <ChefHat className="w-5 h-5" />
-               إرسال للمطبخ (KDS)
+               {orderSubmitting ? 'جاري الإرسال...' : 'إرسال للمطبخ (KDS)'}
              </button>
              <button className="py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition flex items-center justify-center gap-2 shadow-md active:scale-95">
                <Banknote className="w-5 h-5" />
@@ -124,6 +291,19 @@ const RestaurantPOS: React.FC = () => {
     <div className="flex flex-col lg:flex-row h-full gap-6 animate-in fade-in relative">
       {/* Menu Area */}
       <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-3 md:p-6 flex flex-col overflow-hidden transition-colors pb-20 lg:pb-0">
+
+        {/* Search */}
+        <div className="mb-4 shrink-0">
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              value={productsSearch}
+              onChange={(e) => setProductsSearch(e.target.value)}
+              placeholder="ابحث عن صنف..."
+              className="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl py-3 pr-10 pl-4 text-sm focus:border-orange-500 outline-none transition"
+            />
+          </div>
+        </div>
         
         {/* Categories */}
         <div className="flex gap-3 overflow-x-auto pb-4 mb-2 no-scrollbar shrink-0">
@@ -144,9 +324,13 @@ const RestaurantPOS: React.FC = () => {
 
         {/* Products Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto pr-1">
-          {products
-            .filter(p => activeCategory === 'الكل' || p.category === activeCategory)
-            .map(product => (
+          {productsLoading && (
+            <div className="col-span-full text-center text-gray-500 dark:text-gray-300 py-10">جاري تحميل الأصناف...</div>
+          )}
+          {!productsLoading && filteredProducts.length === 0 && (
+            <div className="col-span-full text-center text-gray-500 dark:text-gray-300 py-10">لا توجد أصناف بعد</div>
+          )}
+          {filteredProducts.map(product => (
             <div 
               key={product.id} 
               onClick={() => addToCart(product)}
@@ -184,7 +368,7 @@ const RestaurantPOS: React.FC = () => {
               </div>
            </div>
            <div className="flex items-center gap-2">
-              <span className="font-black text-lg">{(total + tax).toFixed(0)} ج.م</span>
+              <span className="font-black text-lg">{total.toFixed(0)} ج.م</span>
               <ChevronUp className="w-5 h-5" />
            </div>
         </button>

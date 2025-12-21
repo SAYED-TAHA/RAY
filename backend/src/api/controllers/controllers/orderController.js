@@ -14,6 +14,11 @@ export const getOrders = async (req, res) => {
 
     // Build filter
     const filter = {};
+
+    // Multi-tenant security: merchant sees only their orders
+    if (req.user?.role === 'merchant') {
+      filter.merchantId = req.user.id;
+    }
     
     if (req.query.status) {
       filter.status = req.query.status;
@@ -87,6 +92,11 @@ export const getOrderById = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    // Multi-tenant security
+    if (req.user?.role === 'merchant' && String(order.merchantId) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
     res.status(200).json(order);
   } catch (error) {
     console.error('Get order error:', error);
@@ -97,9 +107,15 @@ export const getOrderById = async (req, res) => {
 // Create new order
 export const createOrder = async (req, res) => {
   try {
-    const orderData = {
-      ...req.body
-    };
+    const orderData = { ...req.body };
+
+    // Multi-tenant security: merchant orders are always tied to merchant user
+    if (req.user?.role === 'merchant') {
+      orderData.merchantId = req.user.id;
+      if (!orderData.customerId) {
+        orderData.customerId = req.user.id;
+      }
+    }
 
     const order = new Order(orderData);
     await order.save();
@@ -119,6 +135,20 @@ export const updateOrder = async (req, res) => {
     const updates = {
       ...req.body
     };
+
+    if (req.user?.role === 'merchant') {
+      // Prevent tenant escape
+      delete updates.merchantId;
+    }
+
+    const existing = await Order.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (req.user?.role === 'merchant' && String(existing.merchantId) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
 
     const order = await Order.findByIdAndUpdate(
       req.params.id,
@@ -150,6 +180,10 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    if (req.user?.role === 'merchant' && String(order.merchantId) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
     if (status) order.status = status;
     if (paymentStatus) order.payment.status = paymentStatus;
     
@@ -173,6 +207,15 @@ export const updateOrderStatus = async (req, res) => {
 // Delete order
 export const deleteOrder = async (req, res) => {
   try {
+    const existing = await Order.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (req.user?.role === 'merchant' && String(existing.merchantId) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
     const order = await Order.findByIdAndDelete(req.params.id);
     
     if (!order) {
@@ -191,7 +234,16 @@ export const deleteOrder = async (req, res) => {
 // Get order statistics
 export const getOrderStats = async (req, res) => {
   try {
-    const stats = await Order.aggregate([
+    const match = {};
+    if (req.user?.role === 'merchant') {
+      match.merchantId = req.user.id;
+    }
+
+    const pipeline = [];
+    if (Object.keys(match).length > 0) {
+      pipeline.push({ $match: match });
+    }
+    pipeline.push(
       {
         $group: {
           _id: null,
@@ -217,7 +269,9 @@ export const getOrderStats = async (req, res) => {
           }
         }
       }
-    ]);
+    );
+
+    const stats = await Order.aggregate(pipeline);
 
     const result = stats[0] || {
       totalOrders: 0,

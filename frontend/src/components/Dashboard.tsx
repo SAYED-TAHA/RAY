@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import GeminiAssistant from './common/GeminiAssistant';
-import Header from './dashboard/Header';
-import Sidebar from './dashboard/Sidebar';
+import Header from './dashboard/shared/layout/Header';
+import Sidebar from './dashboard/shared/layout/Sidebar';
 import { BusinessType, colorClasses, dashboardConfigs } from './dashboard/config';
 
 // Import Specific Dashboards

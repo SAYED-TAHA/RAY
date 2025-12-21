@@ -6,8 +6,8 @@ import { fastCart, cartEvents } from '@/utils/performance';
 import { addToCart as addToCartAPI } from '@/services/cartService';
 
 interface Product {
-  id?: string;
-  _id?: string;
+  id?: string | number;
+  _id?: string | number;
   name: string;
   price: number;
   shop?: string;
@@ -56,7 +56,7 @@ const AddToCartButton: React.FC<AddToCartButtonProps> = ({
       const token = localStorage.getItem('authToken');
       if (token) {
         try {
-          await addToCartAPI(productId as string, quantity);
+          await addToCartAPI(String(productId), quantity);
           // Also update local cart for instant feedback
           fastCart.add(product);
           cartEvents.emit();

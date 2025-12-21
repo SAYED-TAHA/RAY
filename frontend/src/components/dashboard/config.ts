@@ -28,7 +28,20 @@ export interface DashboardConfig {
   data: any[];
 }
 
-export const dashboardConfigs: Record<BusinessType, DashboardConfig> = {
+const sanitizeDashboardConfigs = (
+  configs: Record<BusinessType, DashboardConfig>
+ ): Record<BusinessType, DashboardConfig> => {
+  return (Object.keys(configs) as BusinessType[]).reduce(
+   (acc, key) => {
+    const c = configs[key];
+    acc[key] = { ...c, stats: [], data: [] };
+    return acc;
+   },
+   {} as Record<BusinessType, DashboardConfig>
+  );
+ };
+
+const dashboardConfigsRaw: Record<BusinessType, DashboardConfig> = {
   // ... (Previous Configs Remain - omitted for brevity, adding new ones below)
   supermarket: {
     type: 'supermarket',
@@ -58,7 +71,7 @@ export const dashboardConfigs: Record<BusinessType, DashboardConfig> = {
       { label: 'طلب نواقص', icon: Truck, action: 'order_stock' },
       { label: 'مرتجع', icon: RotateCcw, action: 'return' },
     ],
-    tableHeaders: ['رقم الفاتورة', 'نوع العميل', 'عدد القطع', 'الإجمالي', 'الدفع', 'الوقت'],
+    tableHeaders: ['رقم الفاتورة', 'العميل', 'عدد القطع', 'الإجمالي', 'الدفع', 'الوقت'],
     data: [
       { id: '#INV-501', col1: 'عميل طيار', col2: '15 صنف', col3: '850 ج', status: 'paid', time: 'منذ 2 دقيقة' },
       { id: '#INV-502', col1: 'عميل صالة', col2: '3 أصناف', col3: '45 ج', status: 'paid', time: 'منذ 5 دقائق' },
@@ -735,6 +748,8 @@ export const dashboardConfigs: Record<BusinessType, DashboardConfig> = {
     ]
   }
 };
+
+export const dashboardConfigs: Record<BusinessType, DashboardConfig> = sanitizeDashboardConfigs(dashboardConfigsRaw);
 
 export const colorClasses: Record<string, any> = {
   slate: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', btn: 'bg-slate-800 hover:bg-slate-900', lightBtn: 'bg-slate-100 text-slate-800' },

@@ -1,17 +1,18 @@
 
-import React, { useState } from 'react';
-import { Clock, CheckCircle, AlertCircle, ChefHat, Flame, Check, List, LayoutGrid, Truck, Utensils, Zap, Timer } from 'lucide-react';
-import StatusBadge from '../../../common/StatusBadge';
+import React, { useEffect, useState } from 'react';
+import { CheckCircle, ChefHat, Flame, Check, List, LayoutGrid } from 'lucide-react';
+import { fetchOrders, updateOrderStatus, type Order } from '@/services/ordersService';
 
 interface OrderItem {
-  id: number;
+  id: string;
   name: string;
   qty: number;
   notes?: string;
 }
 
 interface KitchenOrder {
-  id: string;
+  id: string; // internal id (Order._id)
+  orderNumber: string;
   type: 'dine_in' | 'delivery' | 'takeaway';
   table?: string;
   customer?: string;
@@ -22,70 +23,85 @@ interface KitchenOrder {
   estimatedTime: number; // بالدقائق
 }
 
-const initialOrders: KitchenOrder[] = [
-  {
-    id: '#1054',
-    type: 'dine_in',
-    table: 'T-05',
-    time: '12:05',
-    status: 'preparing',
-    priority: 'normal',
-    estimatedTime: 8,
-    items: [
-      { id: 1, name: 'برجر كلاسيك', qty: 2, notes: 'بدون بصل' },
-      { id: 2, name: 'بطاطس مقلية', qty: 1 },
-      { id: 3, name: 'كولا', qty: 2 }
-    ]
-  },
-  {
-    id: '#1055',
-    type: 'delivery',
-    customer: 'أحمد محمد',
-    time: '12:12',
-    status: 'new',
-    priority: 'urgent',
-    estimatedTime: 15,
-    items: [
-      { id: 4, name: 'بيتزا مارجريتا', qty: 1 },
-      { id: 5, name: 'سلطة سيزر', qty: 1 }
-    ]
-  },
-  {
-    id: '#1056',
-    type: 'takeaway',
-    customer: 'كابتن علي',
-    time: '12:15',
-    status: 'new',
-    priority: 'vip',
-    estimatedTime: 5,
-    items: [
-      { id: 6, name: 'قهوة لاتيه', qty: 1, notes: 'سكر زيادة' },
-      { id: 7, name: 'تشيز كيك', qty: 1 }
-    ]
-  },
-  {
-    id: '#1057',
-    type: 'dine_in',
-    table: 'T-02',
-    time: '12:18',
-    status: 'new',
-    priority: 'normal',
-    estimatedTime: 12,
-    items: [
-      { id: 8, name: 'ميكس جريل', qty: 3 },
-      { id: 9, name: 'شوربة كريمة', qty: 3 }
-    ]
+const formatTime = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
   }
-];
+};
+
+const toKitchenOrderType = (o: Order): KitchenOrder['type'] => {
+  const dType = o.delivery?.type;
+  if (dType === 'delivery') return 'delivery';
+  if (dType === 'pickup') return 'takeaway';
+  return 'dine_in';
+};
+
+const toKitchenStatus = (status: Order['status']): KitchenOrder['status'] => {
+  if (status === 'preparing') return 'preparing';
+  if (status === 'ready') return 'ready';
+  return 'new';
+};
+
+const estimateMinutes = (o: Order) => {
+  const count = (o.items || []).reduce((s, i) => s + (i.quantity || 0), 0);
+  return Math.max(5, Math.min(30, 5 + count * 2));
+};
+
+const toKitchenOrder = (o: Order): KitchenOrder => {
+  const notes = o.delivery?.deliveryNotes || o.notes?.customerNotes || '';
+  return {
+    id: o._id,
+    orderNumber: o.orderNumber,
+    type: toKitchenOrderType(o),
+    table: o.delivery?.type === 'on-site' ? 'T-01' : undefined,
+    customer: o.customerId,
+    time: formatTime(o.createdAt),
+    status: toKitchenStatus(o.status),
+    items: (o.items || []).map((it, idx) => ({
+      id: String(it.itemId || idx),
+      name: it.name,
+      qty: it.quantity,
+      notes: notes || it.description
+    })),
+    priority: 'normal',
+    estimatedTime: estimateMinutes(o)
+  };
+};
 
 const KitchenDisplay: React.FC = () => {
-  const [orders, setOrders] = useState<KitchenOrder[]>(initialOrders);
+  const [orders, setOrders] = useState<KitchenOrder[]>([]);
+  const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  const updateStatus = (orderId: string, nextStatus: KitchenOrder['status']) => {
-    setOrders(prev => prev.map(order => 
-      order.id === orderId ? { ...order, status: nextStatus } : order
-    ));
+  const loadOrders = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchOrders({ limit: 50, sortBy: 'createdAt', sortOrder: 'desc' });
+      const mapped = (res.orders || []).map(toKitchenOrder);
+      // KDS focus on current tickets
+      const filtered = mapped.filter(o => ['new', 'preparing', 'ready'].includes(o.status));
+      setOrders(filtered);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+    const t = setInterval(loadOrders, 8000);
+    return () => clearInterval(t);
+  }, []);
+
+  const updateStatus = async (orderId: string, nextStatus: KitchenOrder['status']) => {
+    setOrders(prev => prev.map(order => order.id === orderId ? { ...order, status: nextStatus } : order));
+
+    const apiStatus = nextStatus === 'preparing' ? 'preparing' : 'ready';
+    const updated = await updateOrderStatus(orderId, apiStatus);
+    if (updated) {
+      setOrders(prev => prev.map(o => o.id === orderId ? toKitchenOrder(updated) : o));
+    }
   };
 
   const getTypeLabel = (type: string) => {
@@ -150,19 +166,29 @@ const KitchenDisplay: React.FC = () => {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto pr-2">
+        {loading && (
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center text-gray-300 mb-4">
+            جاري تحميل الطلبات...
+          </div>
+        )}
+        {!loading && orders.length === 0 && (
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center text-gray-300 mb-4">
+            لا توجد طلبات بعد
+          </div>
+        )}
         {viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {orders.map(order => (
                 <div 
                 key={order.id} 
                 className={`bg-gray-800 rounded-xl overflow-hidden border-2 flex flex-col min-h-[300px]
-                    ${order.status === 'new' ? 'border-red-500 animate-pulse-slow' : 'border-yellow-500'}
+                    ${order.status === 'new' ? 'border-red-500 animate-pulse-slow' : order.status === 'preparing' ? 'border-yellow-500' : 'border-green-500'}
                 `}
                 >
                 {/* Ticket Header */}
                 <div className={`${getTypeColor(order.type)} text-white p-3 flex justify-between items-center`}>
                     <div className="flex flex-col">
-                    <span className="font-black text-lg">{order.id}</span>
+                    <span className="font-black text-lg">{order.orderNumber}</span>
                     <span className="text-xs opacity-90 font-medium">{getTypeLabel(order.type)}</span>
                     </div>
                     <div className="text-left">
@@ -196,7 +222,7 @@ const KitchenDisplay: React.FC = () => {
                         <Flame className="w-5 h-5 text-orange-500" />
                         بدء التحضير
                     </button>
-                    ) : (
+                    ) : order.status === 'preparing' ? (
                     <button 
                         onClick={() => updateStatus(order.id, 'ready')}
                         className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition"
@@ -204,6 +230,11 @@ const KitchenDisplay: React.FC = () => {
                         <CheckCircle className="w-5 h-5" />
                         جاهز للتقديم
                     </button>
+                    ) : (
+                      <div className="w-full bg-green-600/10 text-green-400 py-3 rounded-lg font-bold flex items-center justify-center gap-2">
+                        <Check className="w-5 h-5" />
+                        تم التجهيز
+                      </div>
                     )}
                 </div>
                 </div>
@@ -226,7 +257,7 @@ const KitchenDisplay: React.FC = () => {
                     <tbody className="text-gray-200 divide-y divide-gray-700">
                         {orders.map(order => (
                             <tr key={order.id} className="hover:bg-gray-700/50 transition">
-                                <td className="p-4 font-black">{order.id}</td>
+                                <td className="p-4 font-black">{order.orderNumber}</td>
                                 <td className="p-4">
                                     <span className={`px-2 py-1 rounded text-xs font-bold text-white ${getTypeColor(order.type)}`}>
                                         {getTypeLabel(order.type)}

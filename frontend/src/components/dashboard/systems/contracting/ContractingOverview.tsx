@@ -1,13 +1,13 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   HardHat, Activity, DollarSign, Package, Plus, Truck, 
   Warehouse, FileText, Users, Settings2, AlertTriangle, 
-  CheckCircle, Clock
+  Loader, AlertCircle
 } from 'lucide-react';
 import ActionButton from '../../../common/buttons/ActionButton';
 import StatCard from '../../../common/cards/StatCard';
 import DashboardCustomizer from '../../DashboardCustomizer';
+import { fetchDashboardOverview } from '../../../../services/analyticsService';
 
 interface ContractingOverviewProps {
   setActiveTab: (tab: string) => void;
@@ -16,12 +16,43 @@ interface ContractingOverviewProps {
 const ContractingOverview: React.FC<ContractingOverviewProps> = ({ setActiveTab }) => {
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
-  const defaultStats = [
-    { id: 'stat_projects', title: "مشاريع نشطة", value: "5", sub: "2 تسليم قريب", icon: HardHat, color: "orange" as const },
-    { id: 'stat_progress', title: "نسبة الإنجاز", value: "68%", sub: "متوسط عام", icon: Activity, color: "blue" as const },
-    { id: 'stat_billing', title: "مستخلصات", value: "2.4M", sub: "تحت التحصيل", icon: DollarSign, color: "green" as const },
-    { id: 'stat_stock', title: "مواد بالموقع", value: "450k", sub: "مواسير وأسمنت", icon: Package, color: "purple" as const },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [overview, setOverview] = useState<any>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchDashboardOverview();
+        setOverview(data);
+      } catch (e) {
+        console.error('Failed to load contracting overview:', e);
+        setError('تعذر تحميل بيانات لوحة التحكم');
+        setOverview(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const defaultStats = useMemo(() => {
+    const orders = Number(overview?.overview?.orders?.current ?? 0);
+    const ordersChange = Number(overview?.overview?.orders?.change ?? 0);
+    const revenue = Number(overview?.overview?.revenue?.current ?? 0);
+    const revenueChange = Number(overview?.overview?.revenue?.change ?? 0);
+    const products = Number(overview?.overview?.products?.total ?? 0);
+
+    return [
+      { id: 'stat_projects', title: "مشاريع/طلبات", value: String(orders), sub: `${ordersChange >= 0 ? '+' : ''}${ordersChange}%`, icon: HardHat, color: "orange" as const },
+      { id: 'stat_progress', title: "نسبة الإنجاز", value: "-", sub: "غير متاح", icon: Activity, color: "blue" as const },
+      { id: 'stat_billing', title: "الإيرادات", value: revenue.toLocaleString(), sub: `${revenueChange >= 0 ? '+' : ''}${revenueChange}%`, icon: DollarSign, color: "green" as const },
+      { id: 'stat_stock', title: "مواد/منتجات", value: String(products), sub: "إجمالي", icon: Package, color: "purple" as const },
+    ];
+  }, [overview]);
 
   const defaultActions = [
     { id: 'act_project', label: "مشروع جديد", icon: Plus, color: "bg-orange-600 text-white", onClick: () => setActiveTab('projects') },
@@ -60,6 +91,18 @@ const ContractingOverview: React.FC<ContractingOverviewProps> = ({ setActiveTab 
           تخصيص
         </button>
       </div>
+
+      {loading ? (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-10 text-center text-gray-600 dark:text-gray-300 flex items-center justify-center gap-2">
+          <Loader className="w-5 h-5 animate-spin" />
+          جاري التحميل...
+        </div>
+      ) : error ? (
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-10 text-center text-red-700 dark:text-red-400 flex items-center justify-center gap-2">
+          <AlertCircle className="w-5 h-5" />
+          {error}
+        </div>
+      ) : null}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -100,10 +143,8 @@ const ContractingOverview: React.FC<ContractingOverviewProps> = ({ setActiveTab 
                   عرض الجدول
                 </button>
             </div>
-            <div className="space-y-4">
-               <ProjectStatusRow name="أبراج العاصمة" stage="التشطيبات" progress={75} status="active" />
-               <ProjectStatusRow name="فيلا د. خالد" stage="تأسيس السباكة" progress={40} status="active" />
-               <ProjectStatusRow name="مول الشروق" stage="الخرسانات" progress={15} status="delayed" />
+            <div className="p-10 text-center text-gray-600 dark:text-gray-300">
+              لا توجد خدمة Backend لهذا القسم حالياً
             </div>
          </div>
 
@@ -113,37 +154,8 @@ const ContractingOverview: React.FC<ContractingOverviewProps> = ({ setActiveTab 
                <AlertTriangle className="w-5 h-5 text-red-500" />
                نواقص المخزن والمواقع
             </h3>
-            <div className="space-y-4">
-               <div className="flex gap-3 items-center p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-300">
-                    <Package className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                     <h4 className="font-bold text-sm text-gray-800 dark:text-white">مواسير 4 بوصة</h4>
-                     <p className="text-xs text-red-500 font-bold">موقع 1: نفذت الكمية</p>
-                  </div>
-                  <button 
-                    onClick={() => setActiveTab('suppliers')}
-                    className="text-xs bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-100 dark:hover:bg-orange-900/40 transition"
-                  >
-                    طلب توريد
-                  </button>
-               </div>
-               <div className="flex gap-3 items-center p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-300">
-                    <Package className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                     <h4 className="font-bold text-sm text-gray-800 dark:text-white">أسمنت مقاوم</h4>
-                     <p className="text-xs text-yellow-600 dark:text-yellow-500 font-bold">المخزن الرئيسي: منخفض</p>
-                  </div>
-                  <button 
-                    onClick={() => setActiveTab('warehouse')}
-                    className="text-xs bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-100 dark:hover:bg-orange-900/40 transition"
-                  >
-                    نقل
-                  </button>
-               </div>
+            <div className="p-10 text-center text-gray-600 dark:text-gray-300">
+              لا توجد خدمة Backend لهذا القسم حالياً
             </div>
          </div>
       </div>
@@ -158,24 +170,5 @@ const ContractingOverview: React.FC<ContractingOverviewProps> = ({ setActiveTab 
     </div>
   );
 };
-
-const ProjectStatusRow = ({ name, stage, progress, status }: any) => (
-    <div className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-orange-200 dark:hover:border-orange-800 transition">
-       <div className={`w-2 h-12 rounded-full ${status === 'delayed' ? 'bg-red-500' : 'bg-green-500'}`}></div>
-       <div className="flex-1">
-          <div className="flex justify-between mb-1">
-             <h4 className="font-bold text-sm text-gray-900 dark:text-white">{name}</h4>
-             <span className={`text-xs font-bold ${status === 'delayed' ? 'text-red-500' : 'text-green-600'}`}>
-                {status === 'delayed' ? 'متأخر' : 'جاري العمل'}
-             </span>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">{stage}</p>
-          <div className="w-full bg-gray-200 dark:bg-gray-600 h-1.5 rounded-full overflow-hidden">
-             <div className={`h-full rounded-full ${status === 'delayed' ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${progress}%`}}></div>
-          </div>
-       </div>
-       <span className="font-bold text-sm text-gray-700 dark:text-gray-300">{progress}%</span>
-    </div>
-);
 
 export default ContractingOverview;

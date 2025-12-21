@@ -1,7 +1,9 @@
 
+"use client";
+
 import React, { useState } from 'react';
 import { Sparkles, RefreshCw, ChevronRight, Lightbulb, Zap } from 'lucide-react';
-import { getGeminiResponse } from '../../../services/geminiService';
+import { getGeminiResponse } from '@/services/geminiService';
 
 interface SmartInsightsWidgetProps {
   dataContext: string;
@@ -55,7 +57,7 @@ const SmartInsightsWidget: React.FC<SmartInsightsWidgetProps> = ({ dataContext }
           
           {insight ? (
             <p className="text-indigo-100 leading-relaxed text-sm animate-in fade-in slide-in-from-bottom-2 duration-500">
-              "{insight}"
+              &quot;{insight}&quot;
             </p>
           ) : (
             <p className="text-indigo-200/70 text-sm leading-relaxed">

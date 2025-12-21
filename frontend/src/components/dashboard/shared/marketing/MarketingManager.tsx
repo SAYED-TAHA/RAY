@@ -1,4 +1,6 @@
 
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { 
   Megaphone, Tag, Plus, TrendingUp, Users, BarChart3, 
@@ -155,7 +157,7 @@ const MarketingManager: React.FC = () => {
                   <Globe className="w-6 h-6 text-blue-600 mt-1" />
                   <div>
                      <h4 className="font-bold text-blue-900">نصيحة: العروض العامة</h4>
-                     <p className="text-sm text-blue-700">العروض التي يتم تحديدها كـ "عرض عام" تظهر تلقائياً في الصفحة الرئيسية للمتجر وفي قسم العروض والخصومات لجميع المستخدمين.</p>
+                     <p className="text-sm text-blue-700">العروض التي يتم تحديدها كـ &quot;عرض عام&quot; تظهر تلقائياً في الصفحة الرئيسية للمتجر وفي قسم العروض والخصومات لجميع المستخدمين.</p>
                   </div>
                </div>
 

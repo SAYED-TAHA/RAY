@@ -28,7 +28,20 @@ export interface DashboardConfig {
   data: any[];
 }
 
-export const dashboardConfigs: Record<BusinessType, DashboardConfig> = {
+const sanitizeDashboardConfigs = (
+  configs: Record<BusinessType, DashboardConfig>
+): Record<BusinessType, DashboardConfig> => {
+  return (Object.keys(configs) as BusinessType[]).reduce(
+    (acc, key) => {
+      const c = configs[key];
+      acc[key] = { ...c, stats: [], data: [] };
+      return acc;
+    },
+    {} as Record<BusinessType, DashboardConfig>
+  );
+};
+
+const dashboardConfigsRaw: Record<BusinessType, DashboardConfig> = {
   // ... (Previous Configs Remain - omitted for brevity, adding new ones below)
   supermarket: {
     type: 'supermarket',
@@ -735,6 +748,8 @@ export const dashboardConfigs: Record<BusinessType, DashboardConfig> = {
     ]
   }
 };
+
+export const dashboardConfigs: Record<BusinessType, DashboardConfig> = sanitizeDashboardConfigs(dashboardConfigsRaw);
 
 export const colorClasses: Record<string, any> = {
   slate: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200', btn: 'bg-slate-800 hover:bg-slate-900', lightBtn: 'bg-slate-100 text-slate-800' },

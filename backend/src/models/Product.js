@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const productSchema = new mongoose.Schema({
+  merchantId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    index: true
+  },
   name: {
     type: String,
     required: true,
@@ -73,6 +78,7 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ name: 'text', category: 'text', keywords: 'text' });
 productSchema.index({ category: 1, status: 1 });
 productSchema.index({ price: 1, stock: 1 });
+productSchema.index({ merchantId: 1, category: 1, status: 1 });
 
 // Pre-save middleware to generate keywords
 productSchema.pre('save', function(next) {

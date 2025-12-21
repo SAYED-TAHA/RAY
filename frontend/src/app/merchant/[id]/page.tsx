@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import MerchantPublicView from '@/components/views/MerchantPublicView';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import GeminiAssistant from '@/components/common/GeminiAssistant';
@@ -22,7 +22,7 @@ interface Merchant {
   email?: string;
 }
 
-export default function MerchantPage() {
+function MerchantPageContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -70,5 +70,13 @@ export default function MerchantPage() {
       />
       <GeminiAssistant context="customer" />
     </div>
+  );
+}
+
+export default function MerchantPage() {
+  return (
+    <Suspense fallback={<div>جاري التحميل...</div>}>
+      <MerchantPageContent />
+    </Suspense>
   );
 }

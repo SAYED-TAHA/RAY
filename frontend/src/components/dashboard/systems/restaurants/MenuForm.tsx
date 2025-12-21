@@ -1,4 +1,6 @@
 
+"use client";
+
 import React, { useState } from 'react';
 import { 
   ChefHat, DollarSign, Flame, Image as ImageIcon, Save, X, Tag, Utensils, Sparkles, Loader2

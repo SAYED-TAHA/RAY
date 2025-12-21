@@ -1,10 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, Edit2, Trash2, Image, Eye, EyeOff, GripVertical, Search } from 'lucide-react';
 import MenuForm from './MenuForm';
+import {
+  createProduct,
+  deleteProduct,
+  fetchProducts,
+  updateProduct,
+  type Product
+} from '@/services/productsService';
 
 interface MenuItem {
-  id: number;
+  id: string;
   name: string;
   description: string;
   price: number;
@@ -15,31 +22,71 @@ interface MenuItem {
   featured?: boolean;
 }
 
-const initialMenu: MenuItem[] = [
-  { id: 1, name: 'برجر كلاسيك', description: 'قطعة لحم أنجوس 200 جرام مع خس وطماطم وصوص خاص', price: 120, category: 'برجر', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400', available: true, featured: true },
-  { id: 2, name: 'برجر مشروم', description: 'قطعة لحم مع صوص المشروم الكريمي والجبنة السويسرية', price: 150, category: 'برجر', image: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?w=400', available: true },
-  { id: 3, name: 'بيتزا مارجريتا', description: 'صوص طماطم إيطالي، جبنة موتزاريلا، وريحان', price: 110, category: 'بيتزا', image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400', available: true },
-  { id: 4, name: 'بيتزا بيبيروني', description: 'شرائح البيبيروني مع الجبنة الموتزاريلا', price: 140, category: 'بيتزا', image: 'https://images.unsplash.com/photo-1628840042765-356cda07504e?w=400', available: true, featured: true },
-  { id: 5, name: 'سلطة سيزر', description: 'خس، قطع دجاج مشوي، جبنة بارميزان، توست محمص', price: 85, category: 'مقبلات', image: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?w=400', available: false },
-  { id: 6, name: 'تشيز كيك', description: 'تشيز كيك نيويورك مع صوص الفراولة', price: 75, category: 'حلوى', image: 'https://images.unsplash.com/photo-1508737027454-e6454ef45afd?w=400', available: true },
-];
-
 const categories = ['الكل', 'برجر', 'بيتزا', 'مقبلات', 'مشروبات', 'حلوى'];
 
+const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400';
+
+const toMenuItem = (p: Product): MenuItem => {
+  const tags = Array.isArray(p.tags) ? p.tags : [];
+  return {
+    id: p._id,
+    name: p.name,
+    description: p.description || '',
+    price: Number(p.price ?? 0),
+    category: p.category || 'الكل',
+    image: p.image || DEFAULT_IMAGE,
+    available: p.status === 'active',
+    featured: tags.includes('featured')
+  };
+};
+
 const MenuManager: React.FC = () => {
-  const [menu, setMenu] = useState<MenuItem[]>(initialMenu);
+  const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(false);
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [searchTerm, setSearchTerm] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
 
-  const filteredMenu = menu.filter(item => 
-    (activeCategory === 'الكل' || item.category === activeCategory) &&
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    fetchProducts({ limit: 200 })
+      .then(res => {
+        if (!mounted) return;
+        const mapped = (res.products || []).map(toMenuItem);
+        setMenu(mapped);
+      })
+      .catch(() => {
+        // productsService already falls back to local store; keep UI safe
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  const toggleAvailability = (id: number) => {
-    setMenu(menu.map(item => item.id === id ? { ...item, available: !item.available } : item));
+  const filteredMenu = useMemo(() => {
+    return menu.filter(item =>
+      (activeCategory === 'الكل' || item.category === activeCategory) &&
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [activeCategory, menu, searchTerm]);
+
+  const toggleAvailability = async (id: string) => {
+    const existing = menu.find(m => m.id === id);
+    if (!existing) return;
+
+    const nextAvailable = !existing.available;
+    setMenu(prev => prev.map(item => item.id === id ? { ...item, available: nextAvailable } : item));
+
+    const updated = await updateProduct(id, { status: nextAvailable ? 'active' : 'inactive' });
+    if (updated) {
+      setMenu(prev => prev.map(item => item.id === id ? toMenuItem(updated) : item));
+    }
   };
 
   const handleAdd = () => {
@@ -52,18 +99,40 @@ const MenuManager: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleSave = (itemData: any) => {
+  const handleSave = async (itemData: any) => {
+    const payload: Partial<Product> = {
+      name: String(itemData?.name ?? '').trim(),
+      price: Number(itemData?.price ?? 0),
+      category: itemData?.category ? String(itemData.category) : undefined,
+      image: itemData?.image ? String(itemData.image) : (editingItem?.image || DEFAULT_IMAGE),
+      description: itemData?.description ? String(itemData.description) : undefined,
+      tags: itemData?.featured ? ['featured'] : undefined,
+      stock: 0,
+      minStock: 0,
+      status: itemData?.available === false ? 'inactive' : 'active',
+      dailySales: 0
+    };
+
     if (editingItem) {
-      setMenu(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...itemData } : i));
+      const updated = await updateProduct(editingItem.id, payload);
+      if (updated) {
+        setMenu(prev => prev.map(i => i.id === editingItem.id ? toMenuItem(updated) : i));
+      }
     } else {
-      const newItem = {
-        id: Date.now(),
-        ...itemData,
-        image: itemData.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'
-      };
-      setMenu([...menu, newItem]);
+      const created = await createProduct(payload as any);
+      if (created) {
+        setMenu(prev => [toMenuItem(created), ...prev]);
+      }
     }
+
     setIsFormOpen(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = await deleteProduct(id);
+    if (ok) {
+      setMenu(prev => prev.filter(i => i.id !== id));
+    }
   };
 
   return (
@@ -115,6 +184,11 @@ const MenuManager: React.FC = () => {
 
       {/* Menu Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-6 overflow-y-auto">
+        {loading && (
+          <div className="col-span-full bg-white rounded-2xl border border-gray-100 p-6 text-center text-gray-500">
+            جاري تحميل الأصناف...
+          </div>
+        )}
         {filteredMenu.map((item) => (
           <div 
             key={item.id} 
@@ -157,7 +231,7 @@ const MenuManager: React.FC = () => {
                   <button onClick={() => handleEdit(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="تعديل">
                     <Edit2 className="w-4 h-4" />
                   </button>
-                  <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition" title="حذف">
+                  <button onClick={() => handleDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition" title="حذف">
                     <Trash2 className="w-4 h-4" />
                   </button>
                   <button className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg cursor-move" title="إعادة ترتيب">

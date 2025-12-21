@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '@/components/common/useTheme';
+import { fetchProducts as fetchProductsApi } from '@/services/productsService';
+import { createOrder as createOrderApi, fetchOrders as fetchOrdersApi, type Order as ApiOrder } from '@/services/ordersService';
 import { 
   Search, Plus, Minus, Trash2, CreditCard, Banknote, 
   ShoppingCart, Package, BarChart3, Store, Globe, Eye, EyeOff,
@@ -13,7 +15,7 @@ import {
 import { BusinessType } from '../../config';
 
 interface Item {
-  id: number;
+  id: string;
   name: string;
   price: number;
   type: 'service' | 'product';
@@ -44,14 +46,59 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
   const [notes, setNotes] = useState('');
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
 
+  const [items, setItems] = useState<Item[]>([]);
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   // Local state for theme and language
   const language = 'ar';
   const themeColor = 'blue';
 
-  const items = getRetailProducts(language);
-  const recentTransactions = getRecentTransactions(language, items);
+  useEffect(() => {
+    let cancelled = false;
 
-  const categories = ['all', ...Array.from(new Set(items.map(item => item.category)))];
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const [productsRes, ordersRes] = await Promise.all([
+          fetchProductsApi({ page: 1, limit: 1000, status: 'active' }),
+          fetchOrdersApi({ page: 1, limit: 100, sortBy: 'createdAt', sortOrder: 'desc' })
+        ]);
+
+        if (cancelled) return;
+
+        const mappedItems: Item[] = (productsRes?.products || []).map(p => ({
+          id: String(p._id),
+          name: p.name,
+          price: Number(p.price ?? 0),
+          type: 'product',
+          category: p.category || 'عام',
+          image: p.image,
+          stock: Number(p.stock ?? 0),
+          sku: p.sku,
+          online: true
+        }));
+
+        setItems(mappedItems.length ? mappedItems : getRetailProducts(language));
+        setOrders(ordersRes?.orders || []);
+      } catch {
+        if (cancelled) return;
+        setItems(getRetailProducts(language));
+        setOrders([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
+  const categories = useMemo(() => {
+    return ['all', ...Array.from(new Set(items.map(item => item.category)))];
+  }, [items]);
 
   const filteredItems = items.filter(i => {
     const matchesSearch = i.name.includes(searchTerm);
@@ -59,6 +106,51 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
     const matchesOnline = !showOnlineOnly || i.online;
     return matchesSearch && matchesCategory && matchesOnline;
   });
+
+  const recentTransactions = useMemo(() => {
+    const paymentLabel = (m: any) => {
+      if (m === 'cash') return 'نقدي';
+      if (m === 'card') return 'بطاقة';
+      if (m === 'wallet') return 'محفظة';
+      return '—';
+    };
+
+    return (orders || []).slice(0, 50).map(order => {
+      const total = Number(order?.pricing?.total ?? 0);
+      const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
+
+      return {
+        customer: order?.customerId || 'عميل',
+        items: `${order?.items?.length || 0} عنصر`,
+        amount: `${total.toFixed(0)} ج`,
+        payment: paymentLabel(order?.payment?.method),
+        time: createdAt ? createdAt.toLocaleString('ar-EG') : '—'
+      };
+    });
+  }, [orders]);
+
+  const overviewStats = useMemo(() => {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const todayOrders = (orders || []).filter(o => {
+      if (!o?.createdAt) return false;
+      const d = new Date(o.createdAt);
+      return d >= startOfDay;
+    });
+
+    const todaySales = todayOrders.reduce((sum, o) => sum + Number(o?.pricing?.total ?? 0), 0);
+    const invoices = todayOrders.length;
+    const lowStock = (items || []).filter(p => typeof p.stock === 'number' && p.stock <= 5).length;
+    const inventoryValue = (items || []).reduce((sum, p) => sum + (Number(p.price ?? 0) * Number(p.stock ?? 0)), 0);
+
+    return {
+      todaySales,
+      invoices,
+      lowStock,
+      inventoryValue
+    };
+  }, [items, orders]);
 
   const addToCart = (item: Item) => {
     setCart(prev => {
@@ -75,7 +167,7 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
     setIsMobileCartOpen(true);
   };
 
-  const updateQty = (id: number, delta: number) => {
+  const updateQty = (id: string, delta: number) => {
     setCart(prev => prev.map(cartItem => {
       if (cartItem.item.id === id) {
         const newQty = cartItem.qty + delta;
@@ -85,7 +177,7 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
     }).filter(cartItem => cartItem.qty > 0));
   };
 
-  const removeFromCart = (id: number) => {
+  const removeFromCart = (id: string) => {
     setCart(prev => prev.filter(cartItem => cartItem.item.id !== id));
   };
 
@@ -100,15 +192,63 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
 
   const processPayment = async () => {
     setIsProcessing(true);
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsProcessing(false);
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsSuccess(false);
-      setCart([]);
-      setSelectedCustomer('');
-    }, 3000);
+    try {
+      const totals = getTotal();
+      const nowIso = new Date().toISOString();
+      const method = paymentMethod === 'digital' ? 'wallet' : paymentMethod;
+
+      await createOrderApi({
+        orderNumber: `POS-${Date.now()}`,
+        customerId: selectedCustomer || 'walk-in',
+        merchantId: 'pos',
+        type: 'product',
+        status: 'completed',
+        items: cart.map(ci => ({
+          type: ci.item.type,
+          itemId: String(ci.item.id),
+          name: ci.item.name,
+          price: Number(ci.item.price ?? 0),
+          quantity: Number(ci.qty ?? 0),
+          subtotal: Number(ci.item.price ?? 0) * Number(ci.qty ?? 0)
+        })),
+        pricing: {
+          subtotal: totals.subtotal,
+          tax: totals.tax,
+          deliveryFee: 0,
+          serviceFee: 0,
+          discount: totals.discountAmount,
+          total: totals.total
+        },
+        payment: {
+          method: method as any,
+          status: 'paid',
+          paidAt: nowIso
+        },
+        delivery: {
+          type: 'on-site'
+        },
+        notes: {
+          customerNotes: notes
+        },
+        timeline: [{
+          status: 'completed',
+          timestamp: nowIso,
+          note: 'POS payment completed'
+        }]
+      } as any);
+
+      const ordersRes = await fetchOrdersApi({ page: 1, limit: 100, sortBy: 'createdAt', sortOrder: 'desc' });
+      setOrders(ordersRes?.orders || []);
+
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        setCart([]);
+        setSelectedCustomer('');
+      }, 3000);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (activeView === 'overview') {
@@ -124,7 +264,7 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">مبيعات اليوم</p>
-                <p className="text-2xl font-bold">15,200 ج</p>
+                <p className="text-2xl font-bold">{overviewStats.todaySales.toFixed(0)} ج</p>
               </div>
               <DollarSign className="w-8 h-8 text-green-500" />
             </div>
@@ -134,7 +274,7 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">عدد الفواتير</p>
-                <p className="text-2xl font-bold">142</p>
+                <p className="text-2xl font-bold">{overviewStats.invoices}</p>
               </div>
               <FileText className="w-8 h-8 text-blue-500" />
             </div>
@@ -144,7 +284,7 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">منتجات تنفذ</p>
-                <p className="text-2xl font-bold">8</p>
+                <p className="text-2xl font-bold">{overviewStats.lowStock}</p>
               </div>
               <AlertCircle className="w-8 h-8 text-red-500" />
             </div>
@@ -154,7 +294,7 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600">قيمة المخزون</p>
-                <p className="text-2xl font-bold">450k ج</p>
+                <p className="text-2xl font-bold">{overviewStats.inventoryValue.toFixed(0)} ج</p>
               </div>
               <Package className="w-8 h-8 text-purple-500" />
             </div>
@@ -513,11 +653,11 @@ const UnifiedPOS: React.FC<IntegratedPOSProps> = ({ type }) => {
 // Helper functions
 function getRetailProducts(language: string): Item[] {
   return [
-    { id: 1, name: 'تيشيرت أسود', price: 150, type: 'product', category: 'ملابس', stock: 50 },
-    { id: 2, name: 'جينز أزرق', price: 250, type: 'product', category: 'ملابس', stock: 30 },
-    { id: 3, name: 'حذاء رياضي', price: 350, type: 'product', category: 'أحذية', stock: 25 },
-    { id: 4, name: 'ساعة يد', price: 500, type: 'product', category: 'إكسسوارات', stock: 15 },
-    { id: 5, name: 'حقيبة ظهر', price: 200, type: 'product', category: 'حقائب', stock: 20 },
+    { id: '1', name: 'تيشيرت أسود', price: 150, type: 'product', category: 'ملابس', stock: 50 },
+    { id: '2', name: 'جينز أزرق', price: 250, type: 'product', category: 'ملابس', stock: 30 },
+    { id: '3', name: 'حذاء رياضي', price: 350, type: 'product', category: 'أحذية', stock: 25 },
+    { id: '4', name: 'ساعة يد', price: 500, type: 'product', category: 'إكسسوارات', stock: 15 },
+    { id: '5', name: 'حقيبة ظهر', price: 200, type: 'product', category: 'حقائب', stock: 20 },
   ];
 }
 

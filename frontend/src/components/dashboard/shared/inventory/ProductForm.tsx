@@ -1,4 +1,6 @@
 
+"use client";
+
 import React, { useState } from 'react';
 import { 
   Box, DollarSign, Barcode, Tag, Save, X, Layers, AlertCircle, Sparkles, Loader2, Cuboid

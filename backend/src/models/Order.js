@@ -13,7 +13,7 @@ const orderSchema = new mongoose.Schema({
   },
   merchantId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Merchant',
+    ref: 'User',
     required: true
   },
   type: {

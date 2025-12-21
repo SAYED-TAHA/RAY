@@ -4,6 +4,14 @@
  */
 
 import { API_URL } from '@/utils/api';
+import {
+  getDataMode,
+  localCreateProduct,
+  localDeleteProduct,
+  localFetchProduct,
+  localListProducts,
+  localUpdateProduct
+} from './localDataStore';
 
 const getAccessToken = (): string | null => {
   if (typeof window === 'undefined') return null;
@@ -27,6 +35,8 @@ export interface Product {
   sku?: string;
   category?: string;
   image?: string;
+  description?: string;
+  tags?: string[];
   stock: number;
   minStock: number;
   status: 'active' | 'inactive';
@@ -46,6 +56,10 @@ export const fetchProducts = async (options?: {
   minStock?: number;
 }): Promise<{ products: Product[]; pagination: any }> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localListProducts(options);
+    }
+
     const params = new URLSearchParams();
     if (options?.page) params.append('page', options.page.toString());
     if (options?.limit) params.append('limit', options.limit.toString());
@@ -53,14 +67,20 @@ export const fetchProducts = async (options?: {
     if (options?.status) params.append('status', options.status);
     if (options?.minStock !== undefined) params.append('minStock', options.minStock.toString());
 
-    const response = await fetch(`${API_URL}/api/products?${params}`);
+    const token = getAccessToken();
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_URL}/api/products?${params}`, { headers });
     if (!response.ok) {
       throw new Error('فشل جلب المنتجات');
     }
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب المنتجات:', error);
-    return { products: [], pagination: { current: 1, pages: 0, total: 0, limit: 20 } };
+    return await localListProducts(options);
   }
 };
 
@@ -69,14 +89,24 @@ export const fetchProducts = async (options?: {
  */
 export const fetchProduct = async (id: string): Promise<Product | null> => {
   try {
-    const response = await fetch(`${API_URL}/api/products/${id}`);
+    if (getDataMode() === 'local') {
+      return await localFetchProduct(id);
+    }
+
+    const token = getAccessToken();
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_URL}/api/products/${id}`, { headers });
     if (!response.ok) {
       throw new Error('فشل جلب المنتج');
     }
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب المنتج:', error);
-    return null;
+    return await localFetchProduct(id);
   }
 };
 
@@ -85,6 +115,10 @@ export const fetchProduct = async (id: string): Promise<Product | null> => {
  */
 export const createProduct = async (product: Omit<Product, '_id' | 'createdAt' | 'updatedAt'>): Promise<Product | null> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localCreateProduct(product);
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     
@@ -106,7 +140,7 @@ export const createProduct = async (product: Omit<Product, '_id' | 'createdAt' |
     return await response.json();
   } catch (error) {
     console.error('خطأ في إضافة المنتج:', error);
-    throw error;
+    return await localCreateProduct(product);
   }
 };
 
@@ -115,6 +149,10 @@ export const createProduct = async (product: Omit<Product, '_id' | 'createdAt' |
  */
 export const updateProduct = async (id: string, product: Partial<Product>): Promise<Product | null> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localUpdateProduct(id, product);
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     
@@ -136,7 +174,7 @@ export const updateProduct = async (id: string, product: Partial<Product>): Prom
     return await response.json();
   } catch (error) {
     console.error('خطأ في تحديث المنتج:', error);
-    throw error;
+    return await localUpdateProduct(id, product);
   }
 };
 
@@ -145,6 +183,10 @@ export const updateProduct = async (id: string, product: Partial<Product>): Prom
  */
 export const deleteProduct = async (id: string): Promise<boolean> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localDeleteProduct(id);
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = {};
     
@@ -165,6 +207,6 @@ export const deleteProduct = async (id: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('خطأ في حذف المنتج:', error);
-    throw error;
+    return await localDeleteProduct(id);
   }
 };

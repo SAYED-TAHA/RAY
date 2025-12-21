@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 type Theme = 'light' | 'dark';
 type Language = 'ar' | 'en';
 
-import { ThemeContext } from './theme-context';
+import { ThemeContext } from '@/components/common/theme-context';
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>('light');

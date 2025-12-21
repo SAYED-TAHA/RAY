@@ -14,4 +14,11 @@ export interface ThemeContextType {
   setLanguage: (language: Language) => void;
 }
 
-export const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export const ThemeContext = createContext<ThemeContextType>({
+  theme: 'light',
+  language: 'ar',
+  toggleTheme: () => {},
+  toggleLanguage: () => {},
+  setTheme: () => {},
+  setLanguage: () => {},
+});

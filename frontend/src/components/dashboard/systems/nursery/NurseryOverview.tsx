@@ -3,14 +3,15 @@
  * إحصائيات وإدارة الحضانة
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Baby, Users, Calendar, DollarSign, Heart, AlertCircle,
-  Plus, Settings2, TrendingUp, Clock, Activity, Smile
+  Baby, Users, Calendar, DollarSign, Heart,
+  Plus, Settings2, TrendingUp, Activity, Loader, AlertCircle
 } from 'lucide-react';
 import ActionButton from '../../../common/buttons/ActionButton';
 import StatCard from '../../../common/cards/StatCard';
 import DashboardCustomizer from '../../DashboardCustomizer';
+import { fetchDashboardOverview } from '../../../../services/analyticsService';
 
 interface NurseryOverviewProps {
   setActiveTab: (tab: string) => void;
@@ -19,12 +20,39 @@ interface NurseryOverviewProps {
 const NurseryOverview: React.FC<NurseryOverviewProps> = ({ setActiveTab }) => {
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
 
-  const defaultStats = [
-    { id: 'stat_children', title: "الأطفال الحاليين", value: "24", sub: "طفل", icon: Baby, color: "blue" as const },
-    { id: 'stat_staff', title: "الموظفين", value: "8", sub: "معلمين وموظفين", icon: Users, color: "green" as const },
-    { id: 'stat_revenue', title: "الإيرادات الشهرية", value: "45,000 ج", sub: "هذا الشهر", icon: DollarSign, color: "purple" as const },
-    { id: 'stat_attendance', title: "معدل الحضور", value: "92%", sub: "هذا الأسبوع", icon: Activity, color: "orange" as const },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [overview, setOverview] = useState<any>(null);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchDashboardOverview();
+        setOverview(data);
+      } catch (e) {
+        console.error('Failed to load nursery overview:', e);
+        setError('تعذر تحميل بيانات لوحة التحكم');
+        setOverview(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const defaultStats = useMemo(() => {
+    const revenue = Number(overview?.overview?.revenue?.current ?? 0);
+    const revenueChange = Number(overview?.overview?.revenue?.change ?? 0);
+    return [
+      { id: 'stat_children', title: "الأطفال الحاليين", value: "-", sub: "طفل", icon: Baby, color: "blue" as const },
+      { id: 'stat_staff', title: "الموظفين", value: "-", sub: "معلمين وموظفين", icon: Users, color: "green" as const },
+      { id: 'stat_revenue', title: "الإيرادات", value: `${revenue.toLocaleString()} ج`, sub: `${revenueChange >= 0 ? '+' : ''}${revenueChange}%`, icon: DollarSign, color: "purple" as const },
+      { id: 'stat_attendance', title: "معدل الحضور", value: "-", sub: "هذا الأسبوع", icon: Activity, color: "orange" as const },
+    ];
+  }, [overview]);
 
   const defaultActions = [
     { id: 'act_enroll', label: "تسجيل طفل", icon: Plus, color: "bg-blue-600 text-white", onClick: () => setActiveTab('children') },
@@ -77,6 +105,18 @@ const NurseryOverview: React.FC<NurseryOverviewProps> = ({ setActiveTab }) => {
         ))}
       </div>
 
+      {loading ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center text-gray-600 flex items-center justify-center gap-2">
+          <Loader className="w-5 h-5 animate-spin" />
+          جاري التحميل...
+        </div>
+      ) : error ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center text-red-700 flex items-center justify-center gap-2">
+          <AlertCircle className="w-5 h-5" />
+          {error}
+        </div>
+      ) : null}
+
       {/* Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {defaultActions.filter(a => visibleIds.includes(a.id)).map(action => (
@@ -98,19 +138,14 @@ const NurseryOverview: React.FC<NurseryOverviewProps> = ({ setActiveTab }) => {
             <Activity className="w-5 h-5 text-blue-600" />
             أنشطة اليوم
           </h3>
-          <div className="space-y-3">
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="font-semibold text-sm text-gray-800">الرياضة الصباحية</p>
-              <p className="text-xs text-gray-600">9:00 - 9:30 صباحاً</p>
-            </div>
-            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-              <p className="font-semibold text-sm text-gray-800">وقت الوجبة</p>
-              <p className="text-xs text-gray-600">12:00 - 1:00 ظهراً</p>
-            </div>
-            <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-              <p className="font-semibold text-sm text-gray-800">القراءة والحكايات</p>
-              <p className="text-xs text-gray-600">2:00 - 2:45 مساءً</p>
-            </div>
+          <div className="p-10 text-center text-gray-600 space-y-3">
+            <div>لا توجد بيانات بعد</div>
+            <button
+              onClick={() => setActiveTab('activities')}
+              className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-2 rounded-lg hover:bg-blue-100 transition"
+            >
+              إدارة الأنشطة
+            </button>
           </div>
         </div>
 
@@ -120,19 +155,14 @@ const NurseryOverview: React.FC<NurseryOverviewProps> = ({ setActiveTab }) => {
             <Calendar className="w-5 h-5 text-purple-600" />
             الأحداث القادمة
           </h3>
-          <div className="space-y-3">
-            <div className="p-3 bg-pink-50 rounded-lg border border-pink-200">
-              <p className="font-semibold text-sm text-gray-800">حفلة عيد الميلاد</p>
-              <p className="text-xs text-gray-600">غداً - 3:00 مساءً</p>
-            </div>
-            <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-              <p className="font-semibold text-sm text-gray-800">رحلة حديقة الحيوان</p>
-              <p className="text-xs text-gray-600">الأحد - 10:00 صباحاً</p>
-            </div>
-            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-              <p className="font-semibold text-sm text-gray-800">اجتماع أولياء الأمور</p>
-              <p className="text-xs text-gray-600">الأربعاء - 4:00 مساءً</p>
-            </div>
+          <div className="p-10 text-center text-gray-600 space-y-3">
+            <div>لا توجد بيانات بعد</div>
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className="text-xs font-bold text-purple-700 bg-purple-50 px-3 py-2 rounded-lg hover:bg-purple-100 transition"
+            >
+              إدارة الجدول
+            </button>
           </div>
         </div>
       </div>

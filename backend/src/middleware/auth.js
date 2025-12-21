@@ -38,6 +38,52 @@ export const authenticateToken = (req, res, next) => {
   })();
 };
 
+export const authenticateTokenOptional = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return next();
+  }
+
+  (async () => {
+    try {
+      const decoded = verifyToken(token);
+      const user = await User.findById(decoded.userId).select('role isActive isEmailVerified subscription');
+
+      if (!user || !user.isActive) {
+        return next();
+      }
+
+      req.user = {
+        ...decoded,
+        id: user._id,
+        userId: user._id,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+        subscription: user.subscription?.plan || decoded.subscription
+      };
+      next();
+    } catch {
+      next();
+    }
+  })();
+};
+
+export const authorize = (...allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    if (allowedRoles.length > 0 && !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Insufficient permissions' });
+    }
+
+    next();
+  };
+};
+
 // Admin role check middleware
 export const requireAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== 'admin') {

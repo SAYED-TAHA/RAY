@@ -4,6 +4,16 @@
  */
 
 import { API_URL } from '@/utils/api';
+import {
+  getDataMode,
+  localComputeOrderStats,
+  localCreateOrder,
+  localDeleteOrder,
+  localFetchOrderById,
+  localListOrders,
+  localUpdateOrder,
+  localUpdateOrderStatus
+} from './localDataStore';
 
  const getAccessToken = (): string | null => {
   if (typeof window === 'undefined') return null;
@@ -74,6 +84,11 @@ export interface Order {
     trackingNumber?: string;
     deliveryNotes?: string;
   };
+  notes?: {
+    customerNotes?: string;
+    merchantNotes?: string;
+    internalNotes?: string;
+  };
   booking?: {
     date: string;
     startTime: string;
@@ -137,6 +152,10 @@ export const fetchOrders = async (
   };
 }> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localListOrders(filters);
+    }
+
     const params = new URLSearchParams();
 
     // إضافة معلمات الفلترة
@@ -169,7 +188,7 @@ export const fetchOrders = async (
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب الطلبات:', error);
-    throw error;
+    return await localListOrders(filters);
   }
 };
 
@@ -178,6 +197,10 @@ export const fetchOrders = async (
  */
 export const fetchOrderById = async (id: string): Promise<Order | null> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localFetchOrderById(id);
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = {};
     
@@ -196,7 +219,7 @@ export const fetchOrderById = async (id: string): Promise<Order | null> => {
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب الطلب:', error);
-    return null;
+    return await localFetchOrderById(id);
   }
 };
 
@@ -205,6 +228,10 @@ export const fetchOrderById = async (id: string): Promise<Order | null> => {
  */
 export const createOrder = async (orderData: Omit<Order, '_id' | 'createdAt' | 'updatedAt'>): Promise<Order> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localCreateOrder(orderData);
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = { 
       'Content-Type': 'application/json' 
@@ -228,7 +255,7 @@ export const createOrder = async (orderData: Omit<Order, '_id' | 'createdAt' | '
     return await response.json();
   } catch (error) {
     console.error('خطأ في إنشاء الطلب:', error);
-    throw error;
+    return await localCreateOrder(orderData);
   }
 };
 
@@ -237,6 +264,10 @@ export const createOrder = async (orderData: Omit<Order, '_id' | 'createdAt' | '
  */
 export const updateOrder = async (id: string, orderData: Partial<Order>): Promise<Order> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localUpdateOrder(id, orderData);
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = { 
       'Content-Type': 'application/json' 
@@ -260,7 +291,7 @@ export const updateOrder = async (id: string, orderData: Partial<Order>): Promis
     return await response.json();
   } catch (error) {
     console.error('خطأ في تحديث الطلب:', error);
-    throw error;
+    return await localUpdateOrder(id, orderData);
   }
 };
 
@@ -269,6 +300,10 @@ export const updateOrder = async (id: string, orderData: Partial<Order>): Promis
  */
 export const updateOrderStatus = async (id: string, status: string, paymentStatus?: string): Promise<Order> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localUpdateOrderStatus(id, status, paymentStatus);
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = { 
       'Content-Type': 'application/json' 
@@ -297,7 +332,7 @@ export const updateOrderStatus = async (id: string, status: string, paymentStatu
     return await response.json();
   } catch (error) {
     console.error('خطأ في تحديث حالة الطلب:', error);
-    throw error;
+    return await localUpdateOrderStatus(id, status, paymentStatus);
   }
 };
 
@@ -306,6 +341,10 @@ export const updateOrderStatus = async (id: string, status: string, paymentStatu
  */
 export const deleteOrder = async (id: string): Promise<boolean> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localDeleteOrder(id);
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = {};
     
@@ -326,7 +365,7 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
     return true;
   } catch (error) {
     console.error('خطأ في حذف الطلب:', error);
-    throw error;
+    return await localDeleteOrder(id);
   }
 };
 
@@ -335,6 +374,10 @@ export const deleteOrder = async (id: string): Promise<boolean> => {
  */
 export const fetchOrderStats = async (): Promise<OrderStats> => {
   try {
+    if (getDataMode() === 'local') {
+      return await localComputeOrderStats();
+    }
+
     const token = getAccessToken();
     const headers: HeadersInit = {};
     
@@ -353,6 +396,6 @@ export const fetchOrderStats = async (): Promise<OrderStats> => {
     return await response.json();
   } catch (error) {
     console.error('خطأ في جلب إحصائيات الطلبات:', error);
-    throw error;
+    return await localComputeOrderStats();
   }
 };

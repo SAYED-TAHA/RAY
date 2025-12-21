@@ -4,11 +4,11 @@ import {
   Users, Clock, DollarSign, Activity, Plus, FileText, 
   Syringe, ClipboardList, Settings2, Loader, AlertCircle
 } from 'lucide-react';
-import axios from 'axios';
 import ActionButton from '../../../common/buttons/ActionButton';
 import StatCard from '../../../common/cards/StatCard';
 import StatusBadge from '../../../common/StatusBadge';
 import DashboardCustomizer from '../../DashboardCustomizer';
+import { fetchDashboardOverview } from '../../../../services/analyticsService';
 
 interface ClinicOverviewProps {
   setActiveTab: (tab: string) => void;
@@ -29,6 +29,7 @@ interface DashboardAction {
   label: string;
   icon: any;
   color: string;
+  tabId: string;
   onClick: () => void;
 }
 
@@ -36,6 +37,9 @@ const ClinicOverview: React.FC<ClinicOverviewProps> = ({ setActiveTab }) => {
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [stats, setStats] = useState<DashboardStats[]>([]);
   const [actions, setActions] = useState<DashboardAction[]>([]);
+  const [queueRows, setQueueRows] = useState<
+    Array<{ id: string; type?: string; time?: string; status?: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,26 +48,113 @@ const ClinicOverview: React.FC<ClinicOverviewProps> = ({ setActiveTab }) => {
       try {
         setLoading(true);
         setError(null);
-        
-        const statsResponse = await axios.get<DashboardStats[]>('/api/dashboard/clinic/stats');
-        const fetchedStats = (statsResponse.data as DashboardStats[]).map((stat: any) => ({
-          ...stat,
-          icon: getIconForStat(stat.id)
-        }));
-        setStats(fetchedStats);
 
-        const actionsResponse = await axios.get<DashboardAction[]>('/api/dashboard/clinic/actions');
-        const fetchedActions = (actionsResponse.data as DashboardAction[]).map((action: any) => ({
-          ...action,
-          icon: getIconForAction(action.id),
-          onClick: () => setActiveTab(action.tabId)
+        const overview = await fetchDashboardOverview();
+
+        const nextStats: DashboardStats[] = [
+          {
+            id: 'stat_patients',
+            title: 'الزيارات/المواعيد',
+            value: String(overview.overview.orders.current ?? 0),
+            sub: `${overview.overview.orders.change >= 0 ? '+' : ''}${Math.round(overview.overview.orders.change ?? 0)}%`,
+            icon: getIconForStat('stat_patients'),
+            color: 'blue',
+          },
+          {
+            id: 'stat_revenue',
+            title: 'الإيرادات',
+            value: `${(overview.overview.revenue.current ?? 0).toLocaleString()} ج`,
+            sub: `${overview.overview.revenue.change >= 0 ? '+' : ''}${Math.round(overview.overview.revenue.change ?? 0)}%`,
+            icon: getIconForStat('stat_revenue'),
+            color: 'green',
+          },
+          {
+            id: 'stat_services',
+            title: 'الخدمات/المنتجات',
+            value: String(overview.overview.products.total ?? 0),
+            sub: `نشط: ${overview.overview.products.active ?? 0}`,
+            icon: getIconForStat('stat_services'),
+            color: 'yellow',
+          },
+          {
+            id: 'stat_avg',
+            title: 'متوسط الزيارة',
+            value:
+              overview.overview.orders.current
+                ? `${Math.round((overview.overview.revenue.current ?? 0) / overview.overview.orders.current).toLocaleString()} ج`
+                : 'N/A',
+            sub: 'حسب بيانات الفترة',
+            icon: getIconForStat('stat_avg'),
+            color: 'red',
+          },
+        ];
+        setStats(nextStats);
+
+        const nextActions: DashboardAction[] = [
+          {
+            id: 'act_book',
+            label: 'حجز موعد',
+            icon: getIconForAction('act_book'),
+            color: 'bg-teal-600 text-white',
+            tabId: 'appointments',
+            onClick: () => setActiveTab('appointments'),
+          },
+          {
+            id: 'act_new_patient',
+            label: 'مريض جديد',
+            icon: getIconForAction('act_new_patient'),
+            color: 'bg-white text-gray-700 border border-gray-200 hover:border-teal-600',
+            tabId: 'patients',
+            onClick: () => setActiveTab('patients'),
+          },
+          {
+            id: 'act_rx',
+            label: 'روشتة',
+            icon: getIconForAction('act_rx'),
+            color: 'bg-white text-gray-700 border border-gray-200 hover:border-teal-600',
+            tabId: 'prescriptions',
+            onClick: () => setActiveTab('prescriptions'),
+          },
+          {
+            id: 'act_lab',
+            label: 'تحاليل',
+            icon: getIconForAction('act_lab'),
+            color: 'bg-white text-gray-700 border border-gray-200 hover:border-teal-600',
+            tabId: 'lab',
+            onClick: () => setActiveTab('lab'),
+          },
+          {
+            id: 'act_vaccine',
+            label: 'تطعيم',
+            icon: getIconForAction('act_vaccine'),
+            color: 'bg-white text-gray-700 border border-gray-200 hover:border-teal-600',
+            tabId: 'appointments',
+            onClick: () => setActiveTab('appointments'),
+          },
+          {
+            id: 'act_followup',
+            label: 'متابعة',
+            icon: getIconForAction('act_followup'),
+            color: 'bg-white text-gray-700 border border-gray-200 hover:border-teal-600',
+            tabId: 'appointments',
+            onClick: () => setActiveTab('appointments'),
+          },
+        ];
+        setActions(nextActions);
+
+        const nextQueue = (overview.recentOrders || []).slice(0, 5).map((o) => ({
+          id: o.orderNumber,
+          type: o.status,
+          time: new Date(o.createdAt).toLocaleTimeString(),
+          status: o.status,
         }));
-        setActions(fetchedActions);
+        setQueueRows(nextQueue);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
         setError('فشل في تحميل بيانات لوحة التحكم');
         setStats([]);
         setActions([]);
+        setQueueRows([]);
       } finally {
         setLoading(false);
       }
@@ -77,7 +168,8 @@ const ClinicOverview: React.FC<ClinicOverviewProps> = ({ setActiveTab }) => {
       'stat_patients': Users,
       'stat_waiting': Clock,
       'stat_revenue': DollarSign,
-      'stat_ops': Activity,
+      stat_services: Activity,
+      stat_avg: DollarSign,
       'stat_doctors': Users,
       'stat_monthly': DollarSign,
     };
@@ -180,10 +272,9 @@ const ClinicOverview: React.FC<ClinicOverviewProps> = ({ setActiveTab }) => {
             <div className="flex justify-between items-center mb-6">
                 <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
                     <Users className="w-5 h-5 text-gray-500" />
-                    قائمة الانتظار (3)
+                    السجل الأخير ({queueRows.length})
                 </h3>
                 <div className="flex gap-2">
-                   <span className="text-xs bg-teal-50 text-teal-800 px-2 py-1 rounded font-bold">متوسط الانتظار: 15 دقيقة</span>
                    <button 
                      onClick={() => setActiveTab('appointments')} 
                      className="text-xs font-bold text-teal-600 hover:bg-teal-50 px-2 py-1 rounded transition"
@@ -192,35 +283,24 @@ const ClinicOverview: React.FC<ClinicOverviewProps> = ({ setActiveTab }) => {
                    </button>
                 </div>
             </div>
-            <div className="space-y-3">
-                <PatientRow name="منى زكي" type="كشف باطنة" time="10:30" status="current" />
-                <PatientRow name="كريم عبد العزيز" type="متابعة" time="10:45" status="waiting" />
-                <PatientRow name="أحمد حلمي" type="استشارة" time="11:00" status="waiting" />
-            </div>
+            {queueRows.length === 0 ? (
+              <div className="p-8 text-center text-gray-600">
+                لا توجد بيانات حالياً
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {queueRows.map((row) => (
+                  <PatientRow key={row.id} name={row.id} type={row.type} time={row.time} status={row.status} />
+                ))}
+              </div>
+            )}
          </div>
 
          {/* Doctor Status */}
          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h3 className="font-bold text-lg text-gray-800 mb-4">حالة الأطباء</h3>
-            <div className="space-y-4">
-               <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-100">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                     <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-                  </div>
-                  <div className="flex-1">
-                     <h4 className="font-bold text-sm">د. أحمد (باطنة)</h4>
-                     <p className="text-xs text-green-700">مع مريض الآن</p>
-                  </div>
-               </div>
-               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 opacity-70">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                     <span className="w-3 h-3 bg-gray-400 rounded-full"></span>
-                  </div>
-                  <div className="flex-1">
-                     <h4 className="font-bold text-sm">د. سارة (أطفال)</h4>
-                     <p className="text-xs text-gray-500">غير متاح</p>
-                  </div>
-               </div>
+            <div className="p-6 text-center text-gray-600">
+              سيتم ربط حالة الأطباء ببيانات API عند توفرها.
             </div>
          </div>
       </div>

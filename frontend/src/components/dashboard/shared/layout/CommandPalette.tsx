@@ -129,7 +129,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, onNavi
             </div>
           ) : (
             <div className="py-12 text-center text-gray-500">
-              <p>لا توجد نتائج مطابقة لـ "{query}"</p>
+              <p>لا توجد نتائج مطابقة لـ &quot;{query}&quot;</p>
             </div>
           )}
         </div>
